@@ -266,6 +266,7 @@
 
 <div class="toast" id="toast"><span id="toastMsg"></span></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   var MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   var MESES_L = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -280,34 +281,64 @@
 
   // ---- ponte com o Apps Script (com fallback localStorage se aberto fora dele) ----
   var LS_KEY = 'minhas_financas_v2';
-  var USA_API = location.protocol === 'http:' || location.protocol === 'https:';
+  // ╔════════════════════════════════════════════════════════════════╗
+  // ║  CONFIGURAÇÃO DO SUPABASE — cole aqui os 2 valores do seu projeto ║
+  // ║  (Supabase → Settings → API). São públicos, pode colar à vontade. ║
+  // ╚════════════════════════════════════════════════════════════════╝
+  var SUPA = {
+    url:  'COLE_AQUI_A_PROJECT_URL',      // ex: https://abcdxyz.supabase.co
+    anon: 'COLE_AQUI_A_ANON_PUBLIC_KEY'   // a chave "anon public"
+  };
+
+  var sb = (SUPA.url.indexOf('COLE_AQUI') < 0 && window.supabase)
+    ? window.supabase.createClient(SUPA.url, SUPA.anon) : null;
+
   function call(fn, arg){
-    return new Promise(function(res, rej){
-      if (USA_API){
-        apiBackend(fn, arg).then(res).catch(rej);
-      } else {
-        // arquivo aberto solto (file://): usa localStorage como reserva offline
-        try { localBackend(fn, arg, res); } catch(e){ rej(e); }
-      }
-    });
+    if (sb) return supaBackend(fn, arg);
+    // Sem Supabase configurado ainda: roda em modo prévia, salvando no navegador.
+    return new Promise(function(res, rej){ try { localBackend(fn, arg, res); } catch(e){ rej(e); } });
   }
-  // ---- backend real (servidor Node + SQLite) ----
-  function apiBackend(fn, arg){
-    if(fn==='getDadosIniciais') return fetchJSON('/api/dados');
-    if(fn==='addLancamento')    return fetchJSON('/api/lancamentos', 'POST', arg);
-    if(fn==='restoreLancamento')return fetchJSON('/api/lancamentos', 'POST', arg);
-    if(fn==='updateLancamento') return fetchJSON('/api/lancamentos/'+encodeURIComponent(arg.id), 'PUT', arg);
-    if(fn==='deleteLancamento') return fetchJSON('/api/lancamentos/'+encodeURIComponent(arg), 'DELETE');
-    if(fn==='saveCategorias')   return fetchJSON('/api/categorias', 'PUT', arg);
-    return Promise.reject('função desconhecida: '+fn);
+
+  // ---- backend real (Supabase / Postgres na nuvem) ----
+  function prep(o){
+    var p = String(o.data).split('-');
+    return {
+      id: o.id || ('l' + Date.now() + Math.floor(Math.random()*1000)),
+      data: o.data, item: o.item||'', categoria: o.categoria||'', conta: o.conta||'',
+      descricao: o.descricao||'', valor: Number(o.valor)||0,
+      mes: parseInt(p[1],10), ano: parseInt(p[0],10),
+      tipo: o.tipo==='receita' ? 'receita' : 'gasto'
+    };
   }
-  function fetchJSON(url, method, body){
-    var opt = { method: method||'GET', headers:{'Content-Type':'application/json'} };
-    if(body!==undefined) opt.body = JSON.stringify(body);
-    return fetch(url, opt).then(function(r){
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.json();
-    });
+  async function supaBackend(fn, arg){
+    if(fn==='getDadosIniciais'){
+      var c = await sb.from('categorias').select('nome,emoji,orcamento').order('ordem');
+      if(c.error) throw c.error;
+      var l = await sb.from('lancamentos').select('*').order('data',{ascending:false});
+      if(l.error) throw l.error;
+      return { categorias:c.data||[], lancamentos:l.data||[] };
+    }
+    if(fn==='addLancamento' || fn==='restoreLancamento'){
+      var r = await sb.from('lancamentos').upsert(prep(arg)).select().single();
+      if(r.error) throw r.error; return r.data;
+    }
+    if(fn==='updateLancamento'){
+      var o = prep(arg);
+      var r2 = await sb.from('lancamentos').update(o).eq('id',o.id).select().single();
+      if(r2.error) throw r2.error; return r2.data;
+    }
+    if(fn==='deleteLancamento'){
+      var r3 = await sb.from('lancamentos').delete().eq('id',arg);
+      if(r3.error) throw r3.error; return { ok:true };
+    }
+    if(fn==='saveCategorias'){
+      var del = await sb.from('categorias').delete().neq('nome','');
+      if(del.error) throw del.error;
+      var rows = arg.map(function(c,i){ return {nome:c.nome, emoji:c.emoji||'🏷️', orcamento:Number(c.orcamento)||0, ordem:i}; });
+      var r4 = await sb.from('categorias').insert(rows).select();
+      if(r4.error) throw r4.error; return r4.data;
+    }
+    throw new Error('função desconhecida: '+fn);
   }
   function lsLoad(){
     var raw = null;

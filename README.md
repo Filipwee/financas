@@ -1,87 +1,61 @@
 # 💸 Minhas Finanças
 
-Controle de finanças pessoais. Interface única em `Index.html` + servidor Node com
-banco **SQLite nativo** (sem nenhuma dependência externa para instalar).
+Controle de finanças pessoais. É uma **página única** (`Index.html`) que guarda os dados
+no **Supabase** (banco na nuvem, plano gratuito). Não precisa de servidor próprio.
 
-## Rodar no seu PC
+- Sem Supabase configurado → roda em **modo prévia**, salvando só no navegador.
+- Com Supabase configurado → dados na nuvem, **sincroniza** entre celular e PC.
 
-Precisa do **Node 22.5 ou mais novo** (você tem o 24, então está ok).
+## Passo a passo (tudo grátis, sem cartão)
 
-```bash
-npm start
-```
+### 1. Criar o projeto no Supabase
+1. Crie conta em https://supabase.com (pode entrar com o GitHub).
+2. **New project** → dê um nome e uma senha de banco (guarde-a) → **Create**.
+3. Espere ~1 min o projeto subir.
 
-Depois abra **http://localhost:3000** no navegador.
+### 2. Criar as tabelas
+1. No projeto, menu lateral → **SQL Editor** → **New query**.
+2. Cole TODO o conteúdo do arquivo [`supabase.sql`](./supabase.sql) e clique **Run**.
+   Isso cria as tabelas, libera o acesso e cadastra as categorias iniciais.
 
-Os dados ficam salvos no arquivo `financas.db` (criado automaticamente na primeira vez).
-Para fazer backup, basta copiar esse arquivo.
+### 3. Pegar as 2 chaves e colar no app
+1. No Supabase: menu lateral → **Settings** → **API**.
+2. Copie:
+   - **Project URL** (ex: `https://abcdxyz.supabase.co`)
+   - **anon public** (a chave longa marcada como `anon` / `public`)
+3. Abra o `Index.html` e, lá no início do `<script>`, preencha:
+   ```js
+   var SUPA = {
+     url:  'https://abcdxyz.supabase.co',
+     anon: 'a-sua-anon-key-aqui'
+   };
+   ```
+   > Esses valores são **públicos** (feitos pra ficar no navegador), pode colar sem medo.
 
-> Se abrir o `Index.html` direto (dois cliques, sem servidor), o app ainda funciona, mas
-> salvando só no navegador (localStorage). Para os dados de verdade, use sempre o `npm start`.
+Pronto — abrindo o `Index.html` agora, ele já lê e grava no Supabase.
 
-## Acessar do celular na mesma rede (Wi-Fi de casa)
+### 4. Publicar online (Vercel — grátis)
+Como virou página estática, qualquer host estático serve. Pela Vercel:
 
-1. Rode `npm start` no PC.
-2. Descubra o IP do PC: `ipconfig` (procure "Endereço IPv4", algo como `192.168.0.10`).
-3. No celular, abra `http://192.168.0.10:3000` (com o PC ligado e na mesma rede).
+1. O código já está no GitHub. Entre em https://vercel.com e faça login com o GitHub.
+2. **Add New → Project** → importe o repositório **Filipwee/financas**.
+3. Em *Framework Preset* deixe **Other** (é HTML puro), não precisa configurar build.
+4. **Deploy**. Em segundos você recebe uma URL pública (ex: `financas.vercel.app`).
+5. Abra no celular e no PC: os dois mexem nos mesmos dados (estão no Supabase).
 
-## Proteger com senha (recomendado antes de publicar na internet)
+> Alternativas igualmente grátis: **Netlify** (arraste a pasta) ou **GitHub Pages**.
 
-A trava de senha já está embutida, **desligada por padrão**. Para ligar, defina a
-variável de ambiente `AUTH_PASSWORD`:
+## Atenção (sem login)
+O app está **sem senha**, então quem tiver o link da Vercel consegue ver/editar.
+Para uso pessoal tudo bem; quando quiser proteger, dá para ligar o **login do Supabase**
+(é nativo e gratuito) — me avise que eu configuro.
 
-```bash
-# Windows (PowerShell)
-$env:AUTH_PASSWORD="suaSenhaForte"; npm start
-
-# Linux/macOS
-AUTH_PASSWORD=suaSenhaForte npm start
-```
-
-O navegador vai pedir usuário e senha (use qualquer usuário + essa senha). Sem tela de login.
-
-## Publicar na internet (acesso de qualquer lugar)
-
-O servidor já lê `process.env.PORT` e `0.0.0.0`, então funciona direto em várias plataformas.
-Como o banco é um arquivo SQLite, você precisa de um **disco/volume persistente** para os dados
-não sumirem a cada deploy. Defina `DB_PATH` apontando para esse volume.
-
-### Opção recomendada: Railway (tem volume e plano gratuito de teste)
-
-1. Crie conta em https://railway.app e instale o GitHub (ou suba a pasta).
-2. Crie um projeto a partir deste repositório.
-3. Em **Variables**, defina:
-   - `AUTH_PASSWORD` = sua senha (importante!)
-   - `DB_PATH` = `/data/financas.db`
-4. Em **Volumes**, crie um volume montado em `/data`.
-5. Deploy. O Railway define `PORT` sozinho e roda `npm start`.
-
-### Outras opções
-
-- **Render** (https://render.com): "Web Service" + um "Disk" montado em `/data`,
-  com `DB_PATH=/data/financas.db`. Start command: `npm start`.
-- **Fly.io / VPS** (qualquer servidor Linux): instale Node 22+, copie a pasta,
-  `npm start`. Para deixar no ar, use `pm2` ou um serviço systemd, e um proxy (Caddy/Nginx)
-  com HTTPS na frente.
-
-> **Sempre defina `AUTH_PASSWORD` ao publicar.** Sem isso, qualquer pessoa com o link
-> consegue ver e editar suas finanças.
+## Detalhe do plano gratuito do Supabase
+Se o projeto ficar **1 semana inteira sem nenhum acesso**, ele "dorme" (os dados **não
+somem**; você clica em *Restore* no painel para reativar). Usando toda semana, nem percebe.
 
 ## Estrutura
-
 ```
-Index.html   → app (interface + lógica no navegador)
-server.js    → servidor HTTP + API + SQLite
-package.json → script de start
-financas.db  → banco (gerado automaticamente; faça backup dele)
+Index.html   → o app inteiro (interface + lógica + conexão com o Supabase)
+supabase.sql → script que cria as tabelas no Supabase
 ```
-
-## API (caso queira integrar outra coisa)
-
-| Método | Rota                     | O que faz                          |
-|--------|--------------------------|------------------------------------|
-| GET    | `/api/dados`             | retorna `{categorias, lancamentos}`|
-| POST   | `/api/lancamentos`       | adiciona (ou restaura, se vier `id`)|
-| PUT    | `/api/lancamentos/:id`   | edita um lançamento                |
-| DELETE | `/api/lancamentos/:id`   | apaga um lançamento                |
-| PUT    | `/api/categorias`        | substitui a lista de categorias    |
