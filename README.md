@@ -1,6 +1,6 @@
 # 💸 Minhas Finanças
 
-Controle de finanças pessoais. É uma **página única** (`Index.html`) que guarda os dados
+Controle de finanças pessoais. É uma **página única** (`index.html`) que guarda os dados
 no **Supabase** (banco na nuvem, plano gratuito). Não precisa de servidor próprio.
 
 - Sem Supabase configurado → roda em **modo prévia**, salvando só no navegador.
@@ -23,7 +23,7 @@ no **Supabase** (banco na nuvem, plano gratuito). Não precisa de servidor próp
 2. Copie:
    - **Project URL** (ex: `https://abcdxyz.supabase.co`)
    - **anon public** (a chave longa marcada como `anon` / `public`)
-3. Abra o `Index.html` e, lá no início do `<script>`, preencha:
+3. Abra o `index.html` e, lá no início do `<script>`, preencha:
    ```js
    var SUPA = {
      url:  'https://abcdxyz.supabase.co',
@@ -32,7 +32,7 @@ no **Supabase** (banco na nuvem, plano gratuito). Não precisa de servidor próp
    ```
    > Esses valores são **públicos** (feitos pra ficar no navegador), pode colar sem medo.
 
-Pronto — abrindo o `Index.html` agora, ele já lê e grava no Supabase.
+Pronto — abrindo o `index.html` agora, ele já lê e grava no Supabase.
 
 ### 4. Publicar online (Vercel — grátis)
 Como virou página estática, qualquer host estático serve. Pela Vercel:
@@ -56,6 +56,6 @@ somem**; você clica em *Restore* no painel para reativar). Usando toda semana, 
 
 ## Estrutura
 ```
-Index.html   → o app inteiro (interface + lógica + conexão com o Supabase)
+index.html   → o app inteiro (interface + lógica + conexão com o Supabase)
 supabase.sql → script que cria as tabelas no Supabase
 ```
