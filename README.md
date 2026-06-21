@@ -45,6 +45,21 @@ Como virou página estática, qualquer host estático serve. Pela Vercel:
 
 > Alternativas igualmente grátis: **Netlify** (arraste a pasta) ou **GitHub Pages**.
 
+## Novidades (precisa rodar o SQL de novo)
+Foram adicionados recursos novos. Para ativá-los na nuvem, **rode o `supabase.sql` de novo**
+(Supabase → SQL Editor → cole tudo → Run). É **seguro e não apaga nada**: só cria as tabelas
+novas (`recorrentes`, `planos`) e adiciona colunas em `lancamentos`.
+
+- **📋 Plano de gastos do mês** — defina quanto pretende gastar por categoria e a renda prevista;
+  o app mostra planejado × real × o que sobra. Botão 📋 no topo.
+- **🔁 Gastos fixos (recorrentes)** — cadastre o que se repete todo mês (aluguel, assinaturas,
+  salário…). O app lança sozinho a cada mês. Menu ⋯ → *Gastos fixos*.
+- **💳 Parcelamento automático** — ao lançar um gasto, informe “Parcelar em N vezes” e ele cria
+  uma parcela por mês (com etiqueta `1/12`, `2/12`…).
+- **📄 Exportar PDF** — Menu ⋯ → *Exportar PDF do mês* (abre relatório → “Salvar como PDF”).
+- **📈 Evolução** — mini-gráfico dos últimos 6 meses de gastos.
+- **📱 App instalável (PWA)** — dá para “Adicionar à tela inicial” e abrir offline.
+
 ## Atenção (sem login)
 O app está **sem senha**, então quem tiver o link da Vercel consegue ver/editar.
 Para uso pessoal tudo bem; quando quiser proteger, dá para ligar o **login do Supabase**
@@ -56,6 +71,9 @@ somem**; você clica em *Restore* no painel para reativar). Usando toda semana, 
 
 ## Estrutura
 ```
-index.html   → o app inteiro (interface + lógica + conexão com o Supabase)
-supabase.sql → script que cria as tabelas no Supabase
+index.html           → o app inteiro (interface + lógica + conexão com o Supabase)
+supabase.sql         → script que cria/atualiza as tabelas no Supabase
+manifest.webmanifest → metadados do app instalável (PWA)
+icon.svg             → ícone do app
+sw.js                → service worker (abre offline)
 ```
