@@ -66,11 +66,21 @@ novas (`recorrentes`, `planos`) e adiciona colunas em `lancamentos`.
 - **📄 Exportar PDF** — Menu ⋯ → *Exportar PDF do mês* (abre relatório → “Salvar como PDF”).
 - **📈 Evolução** — mini-gráfico dos últimos 6 meses de gastos.
 - **📱 App instalável (PWA)** — dá para “Adicionar à tela inicial” e abrir offline.
+- **🔐 Login (e-mail + senha)** — dados privados por conta. Veja abaixo como ativar.
 
-## Atenção (sem login)
-O app está **sem senha**, então quem tiver o link da Vercel consegue ver/editar.
-Para uso pessoal tudo bem; quando quiser proteger, dá para ligar o **login do Supabase**
-(é nativo e gratuito) — me avise que eu configuro.
+## Ativar o login (deixar privado)
+Por padrão o app abre direto (modo aberto). Para exigir login e proteger seus dados:
+
+1. **Deploy** da versão nova (já vem com a tela de login).
+2. No Supabase: **Authentication → Providers → Email** e, para uso pessoal, deixe
+   **“Confirm email” desligado** (assim você entra na hora, sem confirmar por e-mail).
+3. Abra o app e **crie sua conta** (e-mail + senha).
+4. Rode o arquivo [`login.sql`](./login.sql) no **SQL Editor → Run**. Ele dá os seus dados
+   atuais para a sua conta e tranca o acesso (cada conta vê só o que é seu). **Não apaga nada.**
+   > O `login.sql` já vem com o seu e-mail preenchido; troque se você se cadastrou com outro.
+5. Pronto: a partir daí o app pede login. Para sair, use Menu ⋯ → **Sair da conta**.
+
+> Depois de ativar o login, **não rode o `supabase.sql` de novo** — ele recriaria o acesso público.
 
 ## Detalhe do plano gratuito do Supabase
 Se o projeto ficar **1 semana inteira sem nenhum acesso**, ele "dorme" (os dados **não
@@ -80,6 +90,7 @@ somem**; você clica em *Restore* no painel para reativar). Usando toda semana, 
 ```
 index.html           → o app inteiro (interface + lógica + conexão com o Supabase)
 supabase.sql         → script que cria/atualiza as tabelas no Supabase
+login.sql            → script que ativa o login (dados privados por usuário)
 manifest.webmanifest → metadados do app instalável (PWA)
 icon.svg             → ícone do app
 sw.js                → service worker (abre offline)

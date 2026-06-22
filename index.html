@@ -243,6 +243,18 @@
     display:flex;align-items:center;gap:14px}
   .toast.show{opacity:1;pointer-events:auto}
   .toast button{border:none;background:transparent;color:var(--teal);font-weight:800;font-size:14px;cursor:pointer}
+  /* tela de login */
+  .auth-ov{position:fixed;inset:0;background:var(--bg);z-index:60;display:none;
+    align-items:center;justify-content:center;padding:24px}
+  .auth-ov.show{display:flex}
+  .auth-card{width:100%;max-width:380px;background:var(--card2);border:1px solid var(--line);
+    border-radius:20px;padding:26px 22px;box-shadow:var(--shadow)}
+  .auth-card h1{text-align:center;font-size:24px;margin:0 0 4px}
+  .auth-card .asub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px}
+  .auth-msg{font-size:13px;text-align:center;min-height:18px;margin:2px 0 12px}
+  .auth-msg.err{color:var(--red)} .auth-msg.ok{color:var(--green)}
+  .auth-links{text-align:center;font-size:13px;color:var(--muted);margin-top:14px}
+  .auth-links a{color:var(--teal);cursor:pointer;text-decoration:none}
   .loading{text-align:center;color:var(--muted);padding:50px 0}
   .spin{width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--teal);
     border-radius:50%;animation:rot 1s linear infinite;margin:0 auto 12px}
@@ -388,6 +400,29 @@
     <button class="mrow" onclick="closeMenu();openRecs()"><span class="me">🔁</span> Gastos fixos (recorrentes)</button>
     <button class="mrow" onclick="closeMenu();openCats()"><span class="me">🏷️</span> Categorias e orçamentos</button>
     <button class="mrow" onclick="closeMenu();exportarPDF()"><span class="me">📄</span> Exportar PDF do mês</button>
+    <button class="mrow" id="menuSair" onclick="closeMenu();sair()" style="display:none"><span class="me">🚪</span> Sair da conta</button>
+  </div>
+</div>
+
+<!-- Tela de login -->
+<div class="auth-ov" id="ovAuth">
+  <div class="auth-card">
+    <h1>💸 Minhas Finanças</h1>
+    <div class="asub" id="authSub">Entre para acessar seus dados</div>
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="au_email" autocomplete="email" inputmode="email" placeholder="voce@email.com">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="au_pass" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <div class="auth-msg" id="authMsg"></div>
+    <button class="btn save" id="au_btn" style="width:100%" onclick="authSubmit()">Entrar</button>
+    <div class="auth-links">
+      <a id="au_toggle" onclick="authToggle()">Criar uma conta</a> &nbsp;·&nbsp;
+      <a onclick="authReset()">Esqueci a senha</a>
+    </div>
   </div>
 </div>
 
@@ -1428,12 +1463,87 @@
   function runUndo(){ var f=window._undoFn; window._undoFn=null; hideToast(); if(f) f(); }
   function hideToast(){ document.getElementById('toast').classList.remove('show'); }
 
+  // ---- login (Supabase Auth) ----
+  var appStarted=false, authMode='entrar';
+  function authMsg(m, ok){
+    var el=document.getElementById('authMsg'); el.textContent=m||'';
+    el.className='auth-msg'+(m?(ok?' ok':' err'):'');
+  }
+  function applyAuthMode(){
+    var criar = authMode==='criar';
+    document.getElementById('au_btn').textContent = criar?'Criar conta':'Entrar';
+    document.getElementById('au_toggle').textContent = criar?'Já tenho conta':'Criar uma conta';
+    document.getElementById('authSub').textContent = criar?'Crie sua conta para começar':'Entre para acessar seus dados';
+    document.getElementById('au_pass').setAttribute('autocomplete', criar?'new-password':'current-password');
+    authMsg('');
+  }
+  function authToggle(){ authMode = authMode==='criar'?'entrar':'criar'; applyAuthMode(); }
+  function showAuth(){
+    document.getElementById('ovAuth').classList.add('show');
+    document.getElementById('fab').style.display='none';
+    applyAuthMode();
+  }
+  function entrou(){
+    document.getElementById('ovAuth').classList.remove('show');
+    document.getElementById('fab').style.display='';
+    document.getElementById('menuSair').style.display = sb?'':'none';
+    if(!appStarted){ appStarted=true; init(); }
+  }
+  function traduzErro(e){
+    var m=(e&&e.message)||'';
+    if(/invalid login credentials/i.test(m)) return 'E-mail ou senha incorretos.';
+    if(/already registered|already exists/i.test(m)) return 'Esse e-mail já tem conta. Toque em “Já tenho conta”.';
+    if(/should be at least|password/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
+    if(/email/i.test(m) && /valid/i.test(m)) return 'E-mail inválido.';
+    return m || 'Algo deu errado, tente de novo.';
+  }
+  function authSubmit(){
+    var email=document.getElementById('au_email').value.trim();
+    var pass=document.getElementById('au_pass').value;
+    if(!email || !pass){ authMsg('Preencha e-mail e senha.'); return; }
+    var btn=document.getElementById('au_btn'); btn.disabled=true; var txt=btn.textContent; btn.textContent='Aguarde…';
+    var fim=function(){ btn.disabled=false; btn.textContent=txt; };
+    if(authMode==='criar'){
+      sb.auth.signUp({email:email, password:pass}).then(function(r){
+        if(r.error){ authMsg(traduzErro(r.error)); fim(); return; }
+        if(r.data && r.data.session){ entrou(); }
+        else { authMode='entrar'; applyAuthMode(); authMsg('Conta criada! Confirme pelo link no seu e-mail e entre.', true); fim(); }
+      }).catch(function(){ authMsg('Sem conexão, tente de novo.'); fim(); });
+    } else {
+      sb.auth.signInWithPassword({email:email, password:pass}).then(function(r){
+        if(r.error){ authMsg(traduzErro(r.error)); fim(); return; }
+        entrou();
+      }).catch(function(){ authMsg('Sem conexão, tente de novo.'); fim(); });
+    }
+  }
+  function authReset(){
+    var email=document.getElementById('au_email').value.trim();
+    if(!email){ authMsg('Digite seu e-mail acima primeiro.'); return; }
+    sb.auth.resetPasswordForEmail(email).then(function(){
+      authMsg('Enviamos um link de redefinição para seu e-mail.', true);
+    }).catch(function(){ authMsg('Não consegui enviar agora.'); });
+  }
+  function sair(){
+    if(!sb){ toast('Modo prévia (sem login)'); return; }
+    sb.auth.signOut().then(function(){ location.reload(); });
+  }
+  // permite enviar com Enter na tela de login
+  document.getElementById('au_pass').addEventListener('keydown', function(e){ if(e.key==='Enter') authSubmit(); });
+
+  function startApp(){
+    if(!sb){ entrou(); return; }   // modo prévia: sem login, salva no navegador
+    sb.auth.getSession().then(function(r){
+      if(r.data && r.data.session){ entrou(); } else { showAuth(); }
+    }).catch(function(){ showAuth(); });
+    sb.auth.onAuthStateChange(function(ev, session){ if(session && !appStarted) entrou(); });
+  }
+
   // ---- PWA ----
   if('serviceWorker' in navigator){
     window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
   }
 
-  init();
+  startApp();
 </script>
 </body>
 </html>
