@@ -50,6 +50,13 @@ Foram adicionados recursos novos. Para ativá-los na nuvem, **rode o `supabase.s
 (Supabase → SQL Editor → cole tudo → Run). É **seguro e não apaga nada**: só cria as tabelas
 novas (`recorrentes`, `planos`) e adiciona colunas em `lancamentos`.
 
+- **📒 Aba Lançado × 📋 Planejado** — dentro de cada mês há duas abas. Em *Planejado* você lança
+  exatamente como um gasto; quando pagar, toque em **✓ Pagar** e ele vira um lançamento real
+  automaticamente (e some das contas a vencer).
+- **⏰ Contas a vencer** — um aviso no topo lista os planejamentos pendentes dos próximos 7 dias
+  (e os vencidos), com botão para pagar na hora.
+- **🎤 Ditar por voz** — no formulário, toque em *Ditar* e fale (ex: "gastei 30 no mercado");
+  o app preenche valor, item e tenta a categoria. (Funciona melhor no Chrome/Android.)
 - **📋 Plano de gastos do mês** — defina quanto pretende gastar por categoria e a renda prevista;
   o app mostra planejado × real × o que sobra. Botão 📋 no topo.
 - **🔁 Gastos fixos (recorrentes)** — cadastre o que se repete todo mês (aluguel, assinaturas,

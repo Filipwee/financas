@@ -58,6 +58,22 @@ create table if not exists planos (
   primary key (ano, mes, categoria)
 );
 
+-- Tabela de PLANEJAMENTOS (lançamentos planejados; quando pagos viram lançamento real)
+create table if not exists planejados (
+  id            text primary key,
+  data          date not null,
+  item          text,
+  categoria     text,
+  conta         text,
+  descricao     text,
+  valor         numeric not null,
+  mes           integer,
+  ano           integer,
+  tipo          text default 'gasto',
+  status        text default 'pendente',  -- pendente | pago
+  lancamento_id text                       -- id do lançamento gerado ao pagar
+);
+
 -- ------------------------------------------------------------
 --  Acesso PÚBLICO (porque o app está SEM login).
 --  Qualquer pessoa com a anon key pode ler/gravar.
@@ -67,11 +83,13 @@ alter table categorias  enable row level security;
 alter table lancamentos enable row level security;
 alter table recorrentes enable row level security;
 alter table planos      enable row level security;
+alter table planejados  enable row level security;
 
 drop policy if exists "acesso publico categorias"  on categorias;
 drop policy if exists "acesso publico lancamentos" on lancamentos;
 drop policy if exists "acesso publico recorrentes" on recorrentes;
 drop policy if exists "acesso publico planos"      on planos;
+drop policy if exists "acesso publico planejados"  on planejados;
 
 create policy "acesso publico categorias"
   on categorias for all to anon, authenticated using (true) with check (true);
@@ -81,6 +99,8 @@ create policy "acesso publico recorrentes"
   on recorrentes for all to anon, authenticated using (true) with check (true);
 create policy "acesso publico planos"
   on planos for all to anon, authenticated using (true) with check (true);
+create policy "acesso publico planejados"
+  on planejados for all to anon, authenticated using (true) with check (true);
 
 -- ------------------------------------------------------------
 --  Categorias iniciais (só insere se ainda não existir)

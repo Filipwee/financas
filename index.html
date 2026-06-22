@@ -136,6 +136,30 @@
   .item .d{color:var(--muted);font-size:11px;margin-top:2px}
   .tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;
     background:var(--card2);color:var(--accent);margin-right:5px;vertical-align:middle}
+  /* abas Lançado / Planejado */
+  .tabs{display:flex;gap:8px;margin:10px 0 4px}
+  .tabs .tab{flex:1;border:1px solid var(--line);background:var(--card);color:var(--muted);
+    padding:11px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer}
+  .tabs .tab.on{background:var(--card2);border-color:var(--teal);color:var(--teal)}
+  /* lembretes de contas a vencer */
+  .remind{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.4);border-radius:14px;
+    padding:12px 14px;margin-top:12px}
+  .remind .rh{font-weight:700;font-size:13px;color:var(--amber);margin-bottom:6px}
+  .remind .rr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;
+    font-size:13px;border-top:1px solid rgba(251,191,36,.18)}
+  .remind .rr:first-of-type{border-top:none}
+  .remind .rr .rinfo{min-width:0} .remind .rr .rinfo small{color:var(--muted)}
+  /* botão pagar / status do planejado */
+  .pay{border:1px solid var(--teal);background:transparent;color:var(--teal);border-radius:9px;
+    padding:7px 11px;font-weight:700;font-size:12px;cursor:pointer;flex:0 0 auto}
+  .item .pay{margin-left:6px}
+  .pj-paid{opacity:.6}
+  .badge-st{font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;margin-right:5px;vertical-align:middle}
+  .badge-st.pend{background:rgba(251,191,36,.15);color:var(--amber)}
+  .badge-st.paid{background:rgba(52,211,153,.15);color:var(--green)}
+  /* botão ditar por voz */
+  .micbtn{width:100%;border:1px dashed var(--line);background:transparent;color:var(--teal);
+    border-radius:12px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;margin:-4px 0 12px}
   .empty{color:var(--muted);text-align:center;padding:40px 10px;font-size:14px}
   /* FAB */
   .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:20;
@@ -259,6 +283,7 @@
       <button type="button" id="seg_in" onclick="setTipo('receita')">▴ Receita</button>
     </div>
     <input type="hidden" id="f_tipo" value="gasto">
+    <button type="button" class="micbtn" id="micBtn" onclick="ouvirVoz()">🎤 Ditar (ex: "gastei 30 no mercado")</button>
     <div class="two">
       <div class="field">
         <label>Data</label>
@@ -378,8 +403,8 @@
     'Amenidades':'🛋️','Saída pra comer':'🍔','Extras':'✨','Parcelas':'📆','Salário':'💼','Mercado':'🛒',
     'Transporte':'🚗','Saúde':'💊','Lazer':'🎉','Casa':'🏠'};
   var hoje = new Date();
-  var state = { cats:[], lancs:[], recs:[], planos:{}, mesSel:hoje.getMonth()+1, anoSel:hoje.getFullYear(),
-    busca:'', filtroCat:'', formTipo:'gasto' };
+  var state = { cats:[], lancs:[], recs:[], planos:{}, planejados:[], mesSel:hoje.getMonth()+1, anoSel:hoje.getFullYear(),
+    busca:'', filtroCat:'', formTipo:'gasto', aba:'lancado', formAlvo:'lancamento' };
 
   // ---- ponte com o backend (Supabase, com fallback localStorage) ----
   var LS_KEY = 'minhas_financas_v2';
@@ -416,6 +441,17 @@
       parcela_total: o.parcela_total||null, recorrente_id: o.recorrente_id||null
     };
   }
+  function prepPlan(o){
+    var p = String(o.data).split('-');
+    return {
+      id: o.id || ('pj' + Date.now() + Math.floor(Math.random()*100000)),
+      data: o.data, item: o.item||'', categoria: o.categoria||'', conta: o.conta||'',
+      descricao: o.descricao||'', valor: Number(o.valor)||0,
+      mes: parseInt(p[1],10), ano: parseInt(p[0],10),
+      tipo: o.tipo==='receita' ? 'receita' : 'gasto',
+      status: o.status||'pendente', lancamento_id: o.lancamento_id||null
+    };
+  }
   async function supaBackend(fn, arg){
     if(fn==='getDadosIniciais'){
       var c = await sb.from('categorias').select('nome,emoji,orcamento').order('ordem');
@@ -426,7 +462,9 @@
       if(rc.error) throw rc.error;
       var pl = await sb.from('planos').select('*');
       if(pl.error) throw pl.error;
-      return { categorias:c.data||[], lancamentos:l.data||[], recorrentes:rc.data||[], planos:pl.data||[] };
+      var pj = await sb.from('planejados').select('*').order('data',{ascending:true});
+      if(pj.error) throw pj.error;
+      return { categorias:c.data||[], lancamentos:l.data||[], recorrentes:rc.data||[], planos:pl.data||[], planejados:pj.data||[] };
     }
     if(fn==='addLancamento' || fn==='restoreLancamento'){
       var r = await sb.from('lancamentos').upsert(prep(arg)).select().single();
@@ -471,6 +509,19 @@
       if(prows.length){ var ip = await sb.from('planos').insert(prows); if(ip.error) throw ip.error; }
       return { ok:true };
     }
+    if(fn==='addPlanejado' || fn==='restorePlanejado'){
+      var rpj = await sb.from('planejados').upsert(prepPlan(arg)).select().single();
+      if(rpj.error) throw rpj.error; return rpj.data;
+    }
+    if(fn==='updatePlanejado'){
+      var opj = prepPlan(arg);
+      var upj = await sb.from('planejados').update(opj).eq('id',opj.id).select().single();
+      if(upj.error) throw upj.error; return upj.data;
+    }
+    if(fn==='deletePlanejado'){
+      var dpj = await sb.from('planejados').delete().eq('id',arg);
+      if(dpj.error) throw dpj.error; return { ok:true };
+    }
     throw new Error('função desconhecida: '+fn);
   }
   function planoRows(arg){
@@ -496,14 +547,14 @@
         {id:'d1',data:'2026-06-15',item:'',descricao:'importado',categoria:'Comida',conta:'',valor:47,mes:6,ano:2026,tipo:'gasto'},
         {id:'d2',data:'2026-06-15',item:'',descricao:'importado',categoria:'Dízimo',conta:'Pix',valor:200,mes:6,ano:2026,tipo:'gasto'},
         {id:'d3',data:'2026-06-05',item:'Salário',descricao:'',categoria:'Salário',conta:'Conta corrente',valor:2500,mes:6,ano:2026,tipo:'receita'}],
-      recorrentes:[], planos:[]
+      recorrentes:[], planos:[], planejados:[]
     };
   }
   function lsSave(db){ try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch(e){} }
   function localBackend(fn, arg, res){
     var db = window._db || (window._db = lsLoad());
-    db.recorrentes = db.recorrentes||[]; db.planos = db.planos||[];
-    if(fn==='getDadosIniciais') return res({categorias:db.categorias, lancamentos:db.lancamentos, recorrentes:db.recorrentes, planos:db.planos});
+    db.recorrentes = db.recorrentes||[]; db.planos = db.planos||[]; db.planejados = db.planejados||[];
+    if(fn==='getDadosIniciais') return res({categorias:db.categorias, lancamentos:db.lancamentos, recorrentes:db.recorrentes, planos:db.planos, planejados:db.planejados});
     if(fn==='addLancamento'){ var n=prep(arg); db.lancamentos.push(n); lsSave(db); return res(n); }
     if(fn==='addLancamentosBulk'){ var ns=arg.map(prep); ns.forEach(function(x){db.lancamentos.push(x);}); lsSave(db); return res(ns); }
     if(fn==='updateLancamento'){ var u=prep(arg); db.lancamentos=db.lancamentos.map(function(x){return x.id===u.id?u:x;}); lsSave(db); return res(u); }
@@ -516,6 +567,9 @@
       db.planos = db.planos.filter(function(p){ return !(p.ano===arg.ano && p.mes===arg.mes); });
       planoRows(arg).forEach(function(p){ db.planos.push(p); }); lsSave(db); return res({ok:true});
     }
+    if(fn==='addPlanejado'||fn==='restorePlanejado'){ var npj=prepPlan(arg); db.planejados.push(npj); lsSave(db); return res(npj); }
+    if(fn==='updatePlanejado'){ var upj=prepPlan(arg); db.planejados=db.planejados.map(function(x){return x.id===upj.id?upj:x;}); lsSave(db); return res(upj); }
+    if(fn==='deletePlanejado'){ db.planejados=db.planejados.filter(function(x){return x.id!==arg;}); lsSave(db); return res(true); }
     res(null);
   }
 
@@ -562,6 +616,7 @@
         if(row.categoria==='__renda__') p.renda=Number(row.valor)||0; else p.vals[row.categoria]=Number(row.valor)||0;
       });
       state.lancs = (d.lancamentos||[]).map(function(l){ if(!l.tipo) l.tipo='gasto'; if(!l.ano) l.ano=hoje.getFullYear(); return l; });
+      state.planejados = (d.planejados||[]).map(function(p){ if(!p.tipo) p.tipo='gasto'; if(!p.ano) p.ano=hoje.getFullYear(); if(!p.status) p.status='pendente'; return p; });
       gerarRecorrentes().then(posInit).catch(posInit);
     }).catch(function(e){
       document.getElementById('app').innerHTML='<div class="empty">Erro ao carregar: '+e+'</div>';
@@ -691,6 +746,20 @@
   function render(){
     renderYears();
     renderMonths();
+    var html = tabBar();
+    html += state.aba==='planejado' ? viewPlanejado() : viewLancado();
+    document.getElementById('app').innerHTML = html;
+    document.getElementById('fab').innerHTML = '<span>＋</span> '+(state.aba==='planejado'?'Planejar':'Lançar');
+  }
+  function setAba(a){ state.aba=a; render(); }
+  function tabBar(){
+    var nPend = state.planejados.filter(function(p){return p.status!=='pago' && p.mes===state.mesSel && p.ano===state.anoSel;}).length;
+    return '<div class="tabs">'
+      +'<button class="tab'+(state.aba==='lancado'?' on':'')+'" onclick="setAba(\'lancado\')">📒 Lançado</button>'
+      +'<button class="tab'+(state.aba==='planejado'?' on':'')+'" onclick="setAba(\'planejado\')">📋 Planejado'+(nPend?' ('+nPend+')':'')+'</button>'
+      +'</div>';
+  }
+  function viewLancado(){
     var doMes = lancsDoMes(state.anoSel, state.mesSel);
     var gastos = doMes.filter(function(l){return l.tipo!=='receita';});
     var receitas = doMes.filter(function(l){return l.tipo==='receita';});
@@ -714,7 +783,7 @@
     var pct = orcTotal>0 ? Math.min(100, totalGasto/orcTotal*100) : 0;
     var over = totalGasto>orcTotal && orcTotal>0;
     var orcLbl = meta.temPlano ? 'do plano' : 'de orçamento';
-    var html = ''
+    var html = remindBanner()
       + '<div class="total-card">'
       +   '<div class="lbl">Total gasto em '+MESES_L[state.mesSel-1]+'</div>'
       +   '<div class="val">'+brl(totalGasto)+'</div>'
@@ -832,7 +901,7 @@
         html += '</div>';
       });
     }
-    document.getElementById('app').innerHTML = html;
+    return html;
   }
 
   function onBusca(v){ state.busca=v; render();
@@ -844,7 +913,7 @@
     state.formTipo=t; document.getElementById('f_tipo').value=t;
     var o=document.getElementById('seg_out'), i=document.getElementById('seg_in');
     o.className = t==='gasto'?'on out':''; i.className = t==='receita'?'on in':'';
-    document.getElementById('parcRow').style.display = t==='gasto' ? '' : 'none';
+    document.getElementById('parcRow').style.display = (t==='gasto' && state.formAlvo!=='planejado') ? '' : 'none';
   }
   function parcInfo(){
     var n=parseInt(document.getElementById('f_parc').value,10)||1;
@@ -859,7 +928,10 @@
     s.innerHTML = state.cats.map(function(c){return '<option'+(c.nome===sel?' selected':'')+'>'+esc(c.nome)+'</option>';}).join('');
   }
   function openForm(){
-    document.getElementById('formTitle').textContent='Novo lançamento';
+    state.formAlvo = state.aba==='planejado' ? 'planejado' : 'lancamento';
+    var ehPlan = state.formAlvo==='planejado';
+    document.getElementById('formTitle').textContent = ehPlan ? 'Novo planejamento' : 'Novo lançamento';
+    document.getElementById('saveBtn').textContent = ehPlan ? 'Salvar planejamento' : 'Salvar';
     document.getElementById('delBtn').style.display='none';
     document.getElementById('f_id').value='';
     setTipo('gasto'); fillCats();
@@ -871,12 +943,14 @@
     document.getElementById('f_conta').value='';
     document.getElementById('f_desc').value='';
     document.getElementById('f_parc').value='1';
-    document.getElementById('parcRow').style.display='';
+    document.getElementById('parcRow').style.display= ehPlan ? 'none' : '';
     document.getElementById('parcHelp').textContent='';
     document.getElementById('ov').classList.add('show');
   }
   function editar(id){
     var l=state.lancs.filter(function(x){return x.id===id;})[0]; if(!l) return;
+    state.formAlvo='lancamento';
+    document.getElementById('saveBtn').textContent='Salvar';
     document.getElementById('formTitle').textContent='Editar lançamento';
     document.getElementById('delBtn').style.display='block';
     document.getElementById('f_id').value=l.id;
@@ -907,6 +981,21 @@
       tipo:document.getElementById('f_tipo').value
     };
     var erro=function(){ btn.disabled=false; btn.textContent='Salvar'; toast('Erro ao salvar'); };
+
+    // planejamento (aba Planejado)
+    if(state.formAlvo==='planejado'){
+      var finP=function(salvo,msg){
+        var pp=salvo.data.split('-'); state.mesSel=parseInt(pp[1],10); state.anoSel=parseInt(pp[0],10); state.aba='planejado';
+        closeForm(); render(); toast(msg); btn.disabled=false; btn.textContent='Salvar planejamento';
+      };
+      if(id){ obj.id=id;
+        call('updatePlanejado',obj).then(function(novo){ state.planejados=state.planejados.map(function(x){return x.id===id?novo:x;}); finP(novo,'Planejamento atualizado ✓'); }).catch(erro);
+      } else {
+        call('addPlanejado',obj).then(function(novo){ state.planejados.push(novo); finP(novo,'Planejamento adicionado ✓'); }).catch(erro);
+      }
+      return false;
+    }
+
     var fim=function(salvo, msg){
       var p=salvo.data.split('-'); state.mesSel=parseInt(p[1],10); state.anoSel=parseInt(p[0],10);
       closeForm(); render(); toast(msg);
@@ -953,14 +1042,15 @@
     return arr;
   }
 
-  function apagarAtual(){ var id=document.getElementById('f_id').value; if(id){ closeForm(); apagar(id); } }
+  function apagarAtual(){ var id=document.getElementById('f_id').value; if(!id) return; closeForm();
+    if(state.formAlvo==='planejado') apagarPlan(id); else apagar(id); }
   var lastDeleted=null;
   function apagar(id){
     var l=state.lancs.filter(function(x){return x.id===id;})[0]; if(!l) return;
     lastDeleted=l;
     call('deleteLancamento',id).then(function(){
       state.lancs=state.lancs.filter(function(x){return x.id!==id;});
-      render(); toastUndo('Lançamento apagado');
+      render(); toastUndo('Lançamento apagado', desfazer);
     });
   }
   function desfazer(){
@@ -1174,6 +1264,153 @@
     setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 400);
   }
 
+  // ---- aba Planejado ----
+  function viewPlanejado(){
+    var doMes = state.planejados.filter(function(p){return p.mes===state.mesSel && p.ano===state.anoSel;});
+    var gas = doMes.filter(function(p){return p.tipo!=='receita';});
+    var totGasto = gas.reduce(function(s,p){return s+p.valor;},0);
+    var pago = gas.filter(function(p){return p.status==='pago';}).reduce(function(s,p){return s+p.valor;},0);
+    var pend = doMes.filter(function(p){return p.status!=='pago';});
+    var falta = totGasto - pago;
+    var html = '<div class="total-card">'
+      + '<div class="lbl">Planejado para '+MESES_L[state.mesSel-1]+'</div>'
+      + '<div class="val">'+brl(totGasto)+'</div>'
+      + '<div class="bud">pago '+brl(pago)+' • falta '+brl(falta)+' • '+pend.length+' pendente'+(pend.length===1?'':'s')+'</div>'
+      + (totGasto>0?'<div class="bar"><i style="width:'+Math.min(100,pago/totGasto*100)+'%"></i></div>':'')
+      + '</div>';
+    html += '<div class="hint" style="margin:14px 2px 6px">Planeje aqui igual a um gasto. Quando pagar, toque em <b>✓ Pagar</b> e vira um lançamento real automaticamente.</div>';
+    if(!doMes.length){
+      html += '<div class="empty">Nenhum planejamento em '+MESES_L[state.mesSel-1]+'.<br>Toque em <b>＋ Planejar</b> para começar.</div>';
+      return html;
+    }
+    var grupos={}; doMes.forEach(function(p){(grupos[p.data]=grupos[p.data]||[]).push(p);});
+    var dias=Object.keys(grupos).sort(function(a,b){return a<b?-1:1;});
+    dias.forEach(function(dia){
+      var dObj=new Date(dia+'T12:00:00');
+      html += '<div class="daygrp"><div class="dayhdr"><span class="dl">'+DIAS[dObj.getDay()]+' • '+diaMes(dia)+'</span></div>';
+      grupos[dia].forEach(function(p){
+        var ehR=p.tipo==='receita'; var pg=p.status==='pago';
+        var titulo=p.item||p.categoria;
+        var st = pg?'<span class="badge-st paid">✓ pago</span>':'<span class="badge-st pend">pendente</span>';
+        var acao = pg ? '' : '<button class="pay" onclick="event.stopPropagation();pagarPlanejado(\''+p.id+'\')">✓ Pagar</button>';
+        html += '<div class="item'+(pg?' pj-paid':'')+'" onclick="editarPlan(\''+p.id+'\')">'
+          + '<div class="ic" style="background:'+corCat(p.categoria)+'33">'+emoCat(p.categoria)+'</div>'
+          + '<div class="mid"><div class="t1">'+esc(titulo)+'</div><div class="t2">'+st+esc(p.categoria)+(p.conta?' • '+esc(p.conta):'')+'</div></div>'
+          + '<div class="rt"><div class="v'+(ehR?' in':'')+'">'+(ehR?'+':'−')+brl(p.valor)+'</div></div>'
+          + acao
+          + '</div>';
+      });
+      html += '</div>';
+    });
+    return html;
+  }
+
+  function remindBanner(){
+    var hojeStr=hoje.getFullYear()+'-'+pad(hoje.getMonth()+1)+'-'+pad(hoje.getDate());
+    var lim=new Date(hoje.getTime()+7*864e5);
+    var limStr=lim.getFullYear()+'-'+pad(lim.getMonth()+1)+'-'+pad(lim.getDate());
+    var venc=state.planejados.filter(function(p){ return p.status!=='pago' && p.tipo!=='receita' && p.data<=limStr; })
+      .sort(function(a,b){return a.data<b.data?-1:1;});
+    if(!venc.length) return '';
+    var rows=venc.slice(0,5).map(function(p){
+      var atrasado=p.data<hojeStr;
+      return '<div class="rr"><div class="rinfo"><b>'+esc(p.item||p.categoria)+'</b> '+brl(p.valor)
+        +'<br><small>'+(atrasado?'⚠ vencido em ':'vence ')+diaMes(p.data)+' • '+esc(p.categoria)+'</small></div>'
+        +'<button class="pay" onclick="pagarPlanejado(\''+p.id+'\')">✓ Pagar</button></div>';
+    }).join('');
+    return '<div class="remind"><div class="rh">⏰ Contas a vencer (próximos 7 dias)</div>'+rows+'</div>';
+  }
+
+  function editarPlan(id){
+    var p=state.planejados.filter(function(x){return x.id===id;})[0]; if(!p) return;
+    state.formAlvo='planejado';
+    document.getElementById('formTitle').textContent='Editar planejamento';
+    document.getElementById('saveBtn').textContent='Salvar planejamento';
+    document.getElementById('delBtn').style.display='block';
+    document.getElementById('f_id').value=p.id;
+    setTipo(p.tipo==='receita'?'receita':'gasto'); fillCats(p.categoria);
+    document.getElementById('f_data').value=p.data;
+    document.getElementById('f_valor').value=p.valor;
+    document.getElementById('f_item').value=p.item||'';
+    document.getElementById('f_conta').value=p.conta||'';
+    document.getElementById('f_desc').value=(p.descricao&&p.descricao!=='importado')?p.descricao:'';
+    document.getElementById('parcRow').style.display='none';
+    document.getElementById('ov').classList.add('show');
+  }
+
+  var lastDeletedPlan=null;
+  function apagarPlan(id){
+    var p=state.planejados.filter(function(x){return x.id===id;})[0]; if(!p) return;
+    lastDeletedPlan=p;
+    call('deletePlanejado',id).then(function(){
+      state.planejados=state.planejados.filter(function(x){return x.id!==id;});
+      render(); toastUndo('Planejamento apagado', desfazerPlan);
+    });
+  }
+  function desfazerPlan(){
+    if(!lastDeletedPlan) return; var p=lastDeletedPlan; lastDeletedPlan=null;
+    call('restorePlanejado',p).then(function(){ state.planejados.push(p); render(); toast('Restaurado ✓'); });
+  }
+
+  var lastPago=null;
+  function pagarPlanejado(id){
+    var p=state.planejados.filter(function(x){return x.id===id;})[0]; if(!p) return;
+    if(p.status==='pago'){ toast('Já está pago'); return; }
+    var obj={ data:p.data, valor:p.valor, item:p.item, categoria:p.categoria, conta:p.conta, descricao:p.descricao, tipo:p.tipo };
+    call('addLancamento',obj).then(function(novo){
+      state.lancs.push(novo);
+      var upd={}; for(var k in p) upd[k]=p[k]; upd.status='pago'; upd.lancamento_id=novo.id;
+      call('updatePlanejado',upd).then(function(np){
+        state.planejados=state.planejados.map(function(x){return x.id===id?np:x;});
+        lastPago={pjId:id, lancId:novo.id, prev:p};
+        render(); toastUndo('Pago ✓ — virou lançamento', desfazerPago);
+      });
+    }).catch(function(){ toast('Erro ao pagar'); });
+  }
+  function desfazerPago(){
+    if(!lastPago) return; var lp=lastPago; lastPago=null;
+    call('deleteLancamento', lp.lancId).then(function(){
+      state.lancs=state.lancs.filter(function(x){return x.id!==lp.lancId;});
+      call('updatePlanejado', lp.prev).then(function(np){
+        state.planejados=state.planejados.map(function(x){return x.id===lp.pjId?np:x;});
+        render(); toast('Pagamento desfeito');
+      });
+    });
+  }
+
+  // ---- ditar por voz ----
+  function ouvirVoz(){
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ toast('Voz não suportada neste navegador'); return; }
+    var rec=new SR(); rec.lang='pt-BR'; rec.interimResults=false; rec.maxAlternatives=1;
+    var b=document.getElementById('micBtn'); var orig=b.textContent; b.textContent='🎙️ Ouvindo… fale agora';
+    rec.onresult=function(e){ parseVoz(e.results[0][0].transcript); };
+    rec.onerror=function(){ toast('Não consegui ouvir'); };
+    rec.onend=function(){ b.textContent=orig; };
+    try{ rec.start(); }catch(err){ b.textContent=orig; }
+  }
+  function parseVoz(txt){
+    var t=' '+txt.toLowerCase()+' ';
+    if(/\b(recebi|receita|sal[áa]rio|entrou|ganhei|recebimento)\b/.test(t)) setTipo('receita');
+    var mv=t.match(/(\d+(?:[.,]\d{1,2})?)/);
+    if(mv){ document.getElementById('f_valor').value=parseFloat(mv[1].replace(/\.(?=\d{3})/g,'').replace(',','.')); }
+    var achou=null;
+    state.cats.forEach(function(c){ if(t.indexOf(' '+c.nome.toLowerCase())>-1) achou=c.nome; });
+    if(!achou){
+      var dicas={'mercado':'Comida','supermercado':'Comida','comida':'Comida','almo':'Saída pra comer',
+        'jant':'Saída pra comer','lanch':'Saída pra comer','restaurante':'Saída pra comer',
+        'uber':'Transporte','gasolina':'Transporte','transporte':'Transporte','onibus':'Transporte',
+        'rem[ée]dio':'Saúde','farm[áa]cia':'Saúde','d[íi]zimo':'Dízimo','sal[áa]rio':'Salário'};
+      for(var dk in dicas){ if(new RegExp(dk).test(t) && catObj(dicas[dk])){ achou=dicas[dk]; break; } }
+    }
+    if(achou) fillCats(achou);
+    var item=txt.replace(/\b(gastei|paguei|comprei|recebi|reais|real|r\$|de|no|na|do|da|com|um|uma|hoje|foi)\b/gi,' ')
+      .replace(/\d+(?:[.,]\d{1,2})?/g,' ').replace(/\s+/g,' ').trim();
+    if(item) document.getElementById('f_item').value=item;
+    parcInfo();
+    toast('Confira e salve ✓');
+  }
+
   // ---- toast ----
   var toTimer;
   function toast(msg){
@@ -1181,12 +1418,14 @@
     t.innerHTML='<span>'+esc(msg)+'</span>'; t.classList.add('show');
     clearTimeout(toTimer); toTimer=setTimeout(hideToast,1800);
   }
-  function toastUndo(msg){
+  function toastUndo(msg, cb){
+    window._undoFn = cb || desfazer;
     var t=document.getElementById('toast');
-    t.innerHTML='<span>'+esc(msg)+'</span><button onclick="desfazer()">DESFAZER</button>';
+    t.innerHTML='<span>'+esc(msg)+'</span><button onclick="runUndo()">DESFAZER</button>';
     t.classList.add('show');
     clearTimeout(toTimer); toTimer=setTimeout(hideToast,4500);
   }
+  function runUndo(){ var f=window._undoFn; window._undoFn=null; hideToast(); if(f) f(); }
   function hideToast(){ document.getElementById('toast').classList.remove('show'); }
 
   // ---- PWA ----
