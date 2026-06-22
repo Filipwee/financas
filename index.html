@@ -411,6 +411,20 @@
   </div>
 </div>
 
+<!-- Modal minhas contas -->
+<div class="ov" id="ovConta">
+  <div class="sheet" id="contaSheet">
+    <h3><span>💳 Minhas contas</span><button type="button" class="x" onclick="closeContasEditor()">✕</button></h3>
+    <div class="hint">Renomeie ou remova suas contas. Elas aparecem como chips ao lançar.</div>
+    <div id="contaList"></div>
+    <button class="addrow" onclick="addContaRow()">＋ Nova conta</button>
+    <div class="actions">
+      <button type="button" class="btn cancel" onclick="closeContasEditor()">Cancelar</button>
+      <button type="button" class="btn glow" onclick="salvarContasEditor()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal gastos fixos (editor) -->
 <div class="ov" id="ovRec">
   <div class="sheet full" id="recSheet">
@@ -448,6 +462,7 @@
     <h3><span>Menu</span><button type="button" class="x" onclick="closeMenu()">✕</button></h3>
     <button class="mrow" id="menuNome" onclick="closeMenu();editarNome()" style="display:none"><span class="me">👤</span> Meu nome</button>
     <button class="mrow" onclick="closeMenu();openCats()"><span class="me">🏷️</span> Categorias e orçamentos</button>
+    <button class="mrow" onclick="closeMenu();openContasEditor()"><span class="me">💳</span> Minhas contas</button>
     <button class="mrow" onclick="closeMenu();exportarPDF()"><span class="me">📄</span> Exportar PDF do mês</button>
     <button class="mrow" id="menuSair" onclick="closeMenu();sair()" style="display:none"><span class="me">🚪</span> Sair da conta</button>
   </div>
@@ -1161,6 +1176,30 @@
     var existe=state.contas.filter(function(n){return n.toLowerCase()===nome.toLowerCase();})[0];
     if(existe){ buildContaChips(existe); toast('Conta já existe'); return; }
     state.contas.unshift(nome); saveContas(); buildContaChips(nome); toast('Conta adicionada ✓');
+  }
+  // ---- editor "Minhas contas" ----
+  function contaRowEl(nome){
+    var d=document.createElement('div'); d.className='catrow';
+    d.innerHTML='<input class="cn" placeholder="Nome da conta" value="'+esc(nome)+'" style="flex:1">'
+      +'<button class="rm" title="Remover" onclick="this.parentNode.remove()">🗑</button>';
+    return d;
+  }
+  function openContasEditor(){
+    var box=document.getElementById('contaList'); box.innerHTML='';
+    state.contas.forEach(function(n){ box.appendChild(contaRowEl(n)); });
+    if(!state.contas.length) box.appendChild(contaRowEl(''));
+    document.getElementById('ovConta').classList.add('show');
+  }
+  function addContaRow(){ document.getElementById('contaList').appendChild(contaRowEl('')); }
+  function closeContasEditor(){ document.getElementById('ovConta').classList.remove('show'); }
+  document.getElementById('ovConta').addEventListener('click',function(e){if(e.target===this)closeContasEditor();});
+  function salvarContasEditor(){
+    var novas=[], set={};
+    document.querySelectorAll('#contaList .catrow').forEach(function(r){
+      var n=r.querySelector('.cn').value.trim();
+      if(n && !set[n.toLowerCase()]){ set[n.toLowerCase()]=1; novas.push(n); }
+    });
+    state.contas=novas; saveContas(); closeContasEditor(); toast('Contas salvas ✓');
   }
   function openForm(){
     state.formAlvo = (state.screen==='plano' && (state.planoTab||'orcamento')==='planejado') ? 'planejado' : 'lancamento';
