@@ -172,6 +172,7 @@
     border-top:1px solid var(--line);padding:20px 18px calc(20px + env(safe-area-inset-bottom));
     box-shadow:var(--shadow);animation:up .24s ease;max-height:92vh;overflow-y:auto}
   @keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
+  .sheet.full{height:calc(100vh - 24px);max-height:none;border-radius:24px 24px 0 0}
   .sheet h3{margin:0 0 14px;font-size:18px;font-family:var(--f-disp);font-weight:700;
     display:flex;align-items:center;justify-content:space-between}
   .sheet h3 .x{border:none;background:var(--card2);color:var(--muted);width:30px;height:30px;
@@ -380,9 +381,9 @@
       <div class="cap">Valor (R$)</div>
       <input type="number" id="f_valor" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required oninput="parcInfo()">
     </div>
-    <div class="two">
-      <div class="field"><label>Data</label><input type="date" id="f_data" required></div>
-      <div class="field"><label>O que foi</label><input type="text" id="f_item" placeholder="mercado, uber…"></div>
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:0 0 132px;min-width:0"><label>Data</label><input type="date" id="f_data" required style="padding:12px 8px"></div>
+      <div class="field" style="flex:1;min-width:0"><label>O que foi</label><input type="text" id="f_item" placeholder="mercado, uber…"></div>
     </div>
     <div class="field"><label>Categoria</label><div class="chips scroll" id="catChips"></div></div>
     <div class="field"><label>Conta</label>
@@ -418,7 +419,7 @@
 
 <!-- Modal gastos fixos (editor) -->
 <div class="ov" id="ovRec">
-  <div class="sheet" id="recSheet">
+  <div class="sheet full" id="recSheet">
     <h3><span>🔁 Gastos fixos</span><button type="button" class="x" onclick="closeRecs()">✕</button></h3>
     <div class="hint">Cadastre o que se repete todo mês (aluguel, assinaturas, salário…). O app lança sozinho a cada mês.</div>
     <div id="recList"></div>
@@ -451,6 +452,7 @@
 <div class="ov" id="ovMenu">
   <div class="sheet" id="menuSheet">
     <h3><span>Menu</span><button type="button" class="x" onclick="closeMenu()">✕</button></h3>
+    <button class="mrow" id="menuNome" onclick="closeMenu();editarNome()" style="display:none"><span class="me">👤</span> Meu nome</button>
     <button class="mrow" onclick="closeMenu();openCats()"><span class="me">🏷️</span> Categorias e orçamentos</button>
     <button class="mrow" onclick="closeMenu();exportarPDF()"><span class="me">📄</span> Exportar PDF do mês</button>
     <button class="mrow" id="menuSair" onclick="closeMenu();sair()" style="display:none"><span class="me">🚪</span> Sair da conta</button>
@@ -786,7 +788,7 @@
 
     // filtros
     var catsNoMes={}; doMes.forEach(function(l){catsNoMes[l.categoria]=true;});
-    html += '<div class="sec"><span class="t">Lançamentos</span><a onclick="openCats()">＋ categoria</a></div>';
+    html += '<div class="sec"><span class="t">Lançamentos</span></div>';
     html += '<div class="field" style="margin-bottom:6px"><input id="busca" placeholder="🔎 Buscar…" value="'+esc(state.busca)+'" oninput="onBusca(this.value)"></div>';
     if(Object.keys(catsNoMes).length>1){
       html += '<div class="chips scroll" style="margin-bottom:6px">'
@@ -940,7 +942,7 @@
       if(passou) pagoTot+=Number(r.valor)||0; });
     var pend = total - pagoTot;
 
-    var html = '<div class="sec"><span class="t">Gastos fixos</span><a onclick="openRecs()">＋ adicionar</a></div>';
+    var html = '<div class="sec"><span class="t">Gastos fixos</span></div>';
     html += '<div class="gcard">'
       + '<div style="display:flex;justify-content:space-between;align-items:baseline"><div class="miniL">Total mensal</div>'
       + '<div class="miniV" style="font-size:22px">'+brl(total)+'</div></div>'
@@ -1116,7 +1118,17 @@
     document.getElementById('f_cat').value = sel||'';
     document.getElementById('catChips').innerHTML = state.cats.map(function(c){
       return '<span class="chip '+(c.nome===sel?'chip-on':'chip-off')+'" data-v="'+esc(c.nome)+'" onclick="pickCat(this)">'+(c.emoji||emoCat(c.nome))+' '+esc(c.nome)+'</span>';
-    }).join('');
+    }).join('')
+    + '<span class="chip chip-off" style="border-style:dashed;border-color:var(--mint);color:var(--mint)" onclick="addCatQuick()">＋ Nova</span>';
+  }
+  function addCatQuick(){
+    var nome=prompt('Nome da nova categoria:'); if(nome===null) return; nome=nome.trim(); if(!nome) return;
+    if(catObj(nome)){ selectCat(nome); toast('Categoria já existe'); return; }
+    var emoji=prompt('Emoji da categoria (opcional):','🏷️'); emoji=(emoji===null?'':emoji).trim()||'🏷️';
+    var novas=state.cats.map(function(c){return {nome:c.nome,emoji:c.emoji||emoCat(c.nome),orcamento:c.orcamento||0};});
+    novas.push({nome:nome,emoji:emoji,orcamento:0});
+    call('saveCategorias',novas).then(function(){ state.cats=novas; buildCatChips(nome); toast('Categoria criada ✓'); })
+      .catch(function(){ toast('Erro ao criar categoria'); });
   }
   function pickCat(el){
     document.getElementById('catChips').querySelectorAll('.chip').forEach(function(c){c.className='chip chip-off';});
@@ -1621,6 +1633,7 @@
     document.getElementById('ovAuth').classList.remove('show');
     document.getElementById('navbar').style.display='';
     document.getElementById('menuSair').style.display = sb?'':'none';
+    document.getElementById('menuNome').style.display = sb?'':'none';
     var run=function(){
       showGreeting(function(){ if(!appStarted){ appStarted=true; init(); } });
     };
@@ -1667,6 +1680,16 @@
     sb.auth.resetPasswordForEmail(email).then(function(){
       authMsg('Enviamos um link de redefinição para seu e-mail.', true);
     }).catch(function(){ authMsg('Não consegui enviar agora.'); });
+  }
+  function editarNome(){
+    if(!sb){ toast('Modo prévia (sem login)'); return; }
+    var atual = (userName && userName!=='você') ? userName : '';
+    var nome=prompt('Seu nome (aparece na tela inicial):', atual);
+    if(nome===null) return; nome=nome.trim(); if(!nome) return;
+    sb.auth.updateUser({data:{nome:nome}}).then(function(r){
+      if(r.error){ toast('Não consegui salvar o nome'); return; }
+      userName=nome.split(' ')[0]; toast('Nome salvo ✓');
+    }).catch(function(){ toast('Sem conexão, tente de novo'); });
   }
   function sair(){
     if(!sb){ toast('Modo prévia (sem login)'); return; }
