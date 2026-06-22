@@ -40,13 +40,13 @@
     display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px;
     flex:none;cursor:pointer;font-family:var(--f-disp)}
   .ico:active{background:#1b2845}
-  .h-mid{flex:1;text-align:center;font-family:var(--f-disp);font-size:15px;font-weight:700;color:var(--txt)}
+  .h-mid{flex:1;text-align:center;font-family:var(--f-disp);font-size:20px;font-weight:700;color:var(--txt)}
   .h-menu{font-size:18px}
 
   /* ===== SALDO central (dashboard) ===== */
   .balc{text-align:center;margin:14px 0 6px}
-  .balc .cap{font-size:12px;color:var(--muted)}
-  .balc .val{font-family:var(--f-disp);font-size:38px;font-weight:800;color:var(--txt);
+  .balc .cap{font-size:13px;color:var(--muted)}
+  .balc .val{font-family:var(--f-disp);font-size:48px;font-weight:800;color:var(--txt);
     letter-spacing:-.025em;margin-top:2px}
   .balc .val .c{color:var(--muted2)}
   .balc .val.neg{color:var(--red)}
@@ -70,20 +70,20 @@
   /* ===== linhas de lançamento ===== */
   .row{display:flex;align-items:center;gap:11px;padding:11px 2px;cursor:pointer}
   .row:active{background:rgba(255,255,255,.02);border-radius:12px}
-  .ravt{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;
-    justify-content:center;font-size:18px;flex:none;background:var(--card2)}
+  .ravt{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;
+    justify-content:center;font-size:20px;flex:none;background:var(--card2)}
   .rmid{flex:1;min-width:0}
-  .rnm{font-size:14px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .rmt{font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ramt{font-family:var(--f-disp);font-size:14px;font-weight:700;color:var(--txt);flex:none;text-align:right}
+  .rnm{font-size:16px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rmt{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ramt{font-family:var(--f-disp);font-size:16px;font-weight:700;color:var(--txt);flex:none;text-align:right}
   .ramt.in{color:var(--mint)}
   .rdiv{height:1px;background:var(--line-soft);margin:0 2px}
   .tag{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:6px;
     background:var(--card2);color:var(--blue);margin-right:5px;vertical-align:middle}
   .tag.fix{color:var(--mint)}
-  .dayhdr{display:flex;align-items:baseline;justify-content:space-between;margin:16px 2px 4px}
-  .dayhdr .dl{font-size:13px;font-weight:700;color:var(--txt);font-family:var(--f-disp)}
-  .dayhdr .dt{font-size:11px;color:var(--muted);font-weight:600;font-family:var(--f-disp)}
+  .dayhdr{display:flex;align-items:baseline;justify-content:space-between;margin:18px 2px 4px}
+  .dayhdr .dl{font-size:15px;font-weight:700;color:var(--txt);font-family:var(--f-disp)}
+  .dayhdr .dt{font-size:12.5px;color:var(--muted);font-weight:600;font-family:var(--f-disp)}
 
   /* contas a vencer */
   .remind{background:rgba(245,181,68,.08);border:1px solid rgba(245,181,68,.4);border-radius:16px;
@@ -346,7 +346,7 @@
   <div class="h-row">
     <button class="ico" onclick="prevMes()">‹</button>
     <div class="h-mid" id="hMes">Carregando…</div>
-    <button class="ico h-menu" onclick="openMenu()">⋯</button>
+    <button class="ico" id="hRight" onclick="nextMes()">›</button>
   </div>
 </header>
 
@@ -468,6 +468,9 @@
     <div class="kic">MINHAS FINANÇAS</div>
     <h1>Seu dinheiro,<br>sob controle.</h1>
     <div class="asub" id="authSub">Entre para continuar.</div>
+    <div class="auth-field" id="nomeField" style="display:none"><div class="al">SEU NOME</div>
+      <div class="auth-input"><span class="ai">🙂</span><input type="text" id="au_nome" autocomplete="given-name" placeholder="Como quer ser chamado(a)"></div>
+    </div>
     <div class="auth-field"><div class="al">E-MAIL</div>
       <div class="auth-input"><span class="ai">✉</span><input type="email" id="au_email" autocomplete="email" inputmode="email" placeholder="voce@email.com"></div>
     </div>
@@ -758,9 +761,14 @@
     document.querySelectorAll('#navbar .navit').forEach(function(b){
       b.classList.toggle('on', b.dataset.s===state.screen);
     });
-    document.getElementById('fab').onclick = (state.screen==='fixos') ? openRecs : openForm;
+    // botão direito do cabeçalho muda conforme a tela
+    var hr=document.getElementById('hRight');
+    if(state.screen==='fixos'){ hr.innerHTML='＋'; hr.style.color='var(--mint)'; hr.onclick=openRecs; }
+    else if(state.screen==='graficos'){ hr.innerHTML='⋯'; hr.style.color=''; hr.onclick=openMenu; }
+    else { hr.innerHTML='›'; hr.style.color=''; hr.onclick=nextMes; }
+    document.getElementById('fab').onclick = openForm;
   }
-  function setAba(a){ state.aba=a; render(); }
+  function setPlanoTab(t){ state.planoTab=t; render(); }
 
   // ----- INÍCIO (dashboard) -----
   function viewInicio(){
@@ -776,19 +784,9 @@
       + '<div class="pills"><span class="pill up">↑ '+compact(totalReceita)+'</span>'
       + '<span class="pill down">↓ '+compact(totalGasto)+'</span></div></div>';
 
-    html += remindBanner();
-
-    var nPend = state.planejados.filter(function(p){return p.status!=='pago' && p.mes===state.mesSel && p.ano===state.anoSel;}).length;
-    html += '<div class="seg2">'
-      + '<button class="'+(state.aba==='lancado'?'on':'')+'" onclick="setAba(\'lancado\')">📒 Lançado</button>'
-      + '<button class="'+(state.aba==='planejado'?'on':'')+'" onclick="setAba(\'planejado\')">📋 Planejado'+(nPend?' ('+nPend+')':'')+'</button>'
-      + '</div>';
-
-    if(state.aba==='planejado') return html + listaPlanejado();
-
     // filtros
     var catsNoMes={}; doMes.forEach(function(l){catsNoMes[l.categoria]=true;});
-    html += '<div class="sec"><span class="t">Lançamentos</span></div>';
+    html += '<div class="sec"><span class="t">Lançamentos</span><a onclick="openCats()">＋ categoria</a></div>';
     html += '<div class="field" style="margin-bottom:6px"><input id="busca" placeholder="🔎 Buscar…" value="'+esc(state.busca)+'" oninput="onBusca(this.value)"></div>';
     if(Object.keys(catsNoMes).length>1){
       html += '<div class="chips scroll" style="margin-bottom:6px">'
@@ -881,6 +879,16 @@
 
   // ----- PLANO (tela) -----
   function viewPlano(){
+    var nPend = state.planejados.filter(function(p){return p.status!=='pago' && p.mes===state.mesSel && p.ano===state.anoSel;}).length;
+    var tab = state.planoTab||'orcamento';
+    var html = '<div class="seg2">'
+      + '<button class="'+(tab==='orcamento'?'on':'')+'" onclick="setPlanoTab(\'orcamento\')">📋 Orçamento</button>'
+      + '<button class="'+(tab==='planejado'?'on':'')+'" onclick="setPlanoTab(\'planejado\')">🗓️ Planejado'+(nPend?' ('+nPend+')':'')+'</button>'
+      + '</div>';
+    if(tab==='planejado') return html + remindBanner() + listaPlanejado();
+    return html + viewOrcamento();
+  }
+  function viewOrcamento(){
     var meta=metaMes(state.anoSel,state.mesSel);
     var doMes=lancsDoMes(state.anoSel,state.mesSel);
     var totalReceita=doMes.filter(function(l){return l.tipo==='receita';}).reduce(function(s,l){return s+l.valor;},0);
@@ -1131,7 +1139,7 @@
     el.className='chip chip-on'; document.getElementById('f_conta').value=el.dataset.v;
   }
   function openForm(){
-    state.formAlvo = state.aba==='planejado' ? 'planejado' : 'lancamento';
+    state.formAlvo = (state.screen==='plano' && (state.planoTab||'orcamento')==='planejado') ? 'planejado' : 'lancamento';
     var ehPlan = state.formAlvo==='planejado';
     document.getElementById('formTitle').textContent = ehPlan ? 'Novo planejamento' : 'Novo lançamento';
     document.getElementById('saveBtn').textContent = ehPlan ? 'Salvar planejamento' : 'Salvar';
@@ -1192,7 +1200,7 @@
 
     if(state.formAlvo==='planejado'){
       var finP=function(salvo,msg){
-        var pp=salvo.data.split('-'); state.mesSel=parseInt(pp[1],10); state.anoSel=parseInt(pp[0],10); state.aba='planejado'; state.screen='inicio';
+        var pp=salvo.data.split('-'); state.mesSel=parseInt(pp[1],10); state.anoSel=parseInt(pp[0],10); state.screen='plano'; state.planoTab='planejado';
         closeForm(); render(); toast(msg); btn.disabled=false; btn.textContent=btxt;
       };
       if(id){ obj.id=id;
@@ -1595,6 +1603,7 @@
     document.getElementById('authBottom').firstChild.textContent = criar?'Já tem conta? ':'Não tem conta? ';
     document.getElementById('authSub').textContent = criar?'Crie sua conta para começar.':'Entre para continuar.';
     document.getElementById('au_pass').setAttribute('autocomplete', criar?'new-password':'current-password');
+    document.getElementById('nomeField').style.display = criar?'':'none';
     authMsg('');
   }
   function authToggle(){ authMode = authMode==='criar'?'entrar':'criar'; applyAuthMode(); }
@@ -1616,7 +1625,9 @@
       showGreeting(function(){ if(!appStarted){ appStarted=true; init(); } });
     };
     if(sb){ sb.auth.getUser().then(function(r){
-        if(r && r.data && r.data.user) userName=nomeDoEmail(r.data.user.email);
+        var u = r && r.data && r.data.user;
+        if(u){ var nm = u.user_metadata && (u.user_metadata.nome||u.user_metadata.full_name);
+          userName = (nm && nm.trim()) ? nm.trim().split(' ')[0] : nomeDoEmail(u.email); }
         run();
       }).catch(run);
     } else { userName='você'; run(); }
@@ -1636,7 +1647,9 @@
     var btn=document.getElementById('au_btn'); btn.disabled=true; var txt=btn.textContent; btn.textContent='Aguarde…';
     var fim=function(){ btn.disabled=false; btn.textContent=txt; };
     if(authMode==='criar'){
-      sb.auth.signUp({email:email, password:pass}).then(function(r){
+      var nome=document.getElementById('au_nome').value.trim();
+      if(!nome){ authMsg('Digite seu nome.'); fim(); return; }
+      sb.auth.signUp({email:email, password:pass, options:{data:{nome:nome}}}).then(function(r){
         if(r.error){ authMsg(traduzErro(r.error)); fim(); return; }
         if(r.data && r.data.session){ entrou(); }
         else { authMode='entrar'; applyAuthMode(); authMsg('Conta criada! Confirme pelo link no seu e-mail e entre.', true); fim(); }

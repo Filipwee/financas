@@ -2,7 +2,7 @@
 // Estratégia: a PÁGINA (HTML) é sempre buscada da rede primeiro (network-first),
 // caindo no cache só quando estiver offline. Assim novas versões aparecem na hora.
 // Os dados vêm do Supabase (rede) e não são cacheados aqui.
-var CACHE = 'financas-v3';
+var CACHE = 'financas-v4';
 var ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', function(e){
