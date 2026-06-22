@@ -383,14 +383,10 @@
     </div>
     <div class="field"><label>O que foi</label><input type="text" id="f_item" placeholder="Ex: Mercado Extra"></div>
     <div class="field"><label>Categoria</label><div class="chips" id="catChips"></div></div>
-    <div class="field"><label>Conta</label>
-      <div class="chips" id="contaChips" style="margin-bottom:8px"></div>
-      <input type="text" id="f_conta" list="contas" placeholder="ou digite a conta…">
-      <datalist id="contas"><option>Dinheiro</option><option>Pix</option><option>Conta corrente</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Poupança</option></datalist>
-    </div>
-    <div class="field"><label>Data</label><input type="date" id="f_data" required></div>
+    <div class="field"><label>Conta</label><div class="chips" id="contaChips"></div><input type="hidden" id="f_conta"></div>
+    <div class="field"><label>Data</label><input type="date" id="f_data" required style="width:160px;max-width:100%"></div>
     <div class="field" id="parcRow"><label>Parcelar em (vezes)</label>
-      <input type="number" id="f_parc" inputmode="numeric" step="1" min="1" max="48" value="1" oninput="parcInfo()">
+      <input type="number" id="f_parc" inputmode="numeric" step="1" min="1" max="48" value="1" oninput="parcInfo()" style="width:110px">
       <div class="help" id="parcHelp"></div>
     </div>
     <div class="field"><label>Descrição (opcional)</label><input type="text" id="f_desc" placeholder="observação rápida"></div>
@@ -497,8 +493,18 @@
     'Amenidades':'🛋️','Saída pra comer':'🍔','Extras':'✨','Parcelas':'📆','Salário':'💼','Mercado':'🛒',
     'Transporte':'🚗','Saúde':'💊','Lazer':'🎉','Casa':'🏠'};
   var hoje = new Date();
-  var state = { cats:[], lancs:[], recs:[], planos:{}, planejados:[], mesSel:hoje.getMonth()+1, anoSel:hoje.getFullYear(),
+  var state = { cats:[], lancs:[], recs:[], planos:{}, planejados:[], contas:[], mesSel:hoje.getMonth()+1, anoSel:hoje.getFullYear(),
     busca:'', filtroCat:'', formTipo:'gasto', aba:'lancado', formAlvo:'lancamento', screen:'inicio' };
+  var LS_CONTAS = 'mf_contas';
+  function contasPadrao(){ return ['Pix','Dinheiro','Cartão','Conta corrente']; }
+  function loadContas(){
+    var extra=[]; try{ extra=JSON.parse(localStorage.getItem(LS_CONTAS))||[]; }catch(e){}
+    var set={}, out=[];
+    contasPadrao().concat(extra).forEach(function(n){ n=(n||'').trim(); if(n && !set[n.toLowerCase()]){set[n.toLowerCase()]=1;out.push(n);} });
+    state.lancs.forEach(function(l){ var n=(l.conta||'').trim(); if(n && !set[n.toLowerCase()]){set[n.toLowerCase()]=1;out.push(n);} });
+    return out;
+  }
+  function saveContas(){ try{ localStorage.setItem(LS_CONTAS, JSON.stringify(state.contas)); }catch(e){} }
 
   // ---- ponte com o backend (Supabase, com fallback localStorage) ----
   var LS_KEY = 'minhas_financas_v2';
@@ -700,6 +706,7 @@
     });
   }
   function posInit(){
+    state.contas = loadContas();
     var comDados = state.lancs.filter(function(l){return l.mes===state.mesSel && l.ano===state.anoSel;});
     if(!comDados.length && state.lancs.length){
       var ult = state.lancs.slice().sort(function(a,b){return (b.data>a.data)?1:-1;})[0];
@@ -1138,15 +1145,22 @@
     box.querySelectorAll('.chip').forEach(function(c){ c.className = (c.dataset.v===nome)?'chip chip-on':'chip chip-off'; });
   }
   function buildContaChips(sel){
-    var presets=['Pix','Dinheiro','Cartão','Conta corrente'];
-    if(sel && presets.indexOf(sel)<0) presets.unshift(sel);
-    document.getElementById('contaChips').innerHTML = presets.map(function(n){
+    document.getElementById('f_conta').value = sel||'';
+    if(sel && !state.contas.some(function(n){return n.toLowerCase()===sel.toLowerCase();})) state.contas.unshift(sel);
+    document.getElementById('contaChips').innerHTML = state.contas.map(function(n){
       return '<span class="chip '+(n===sel?'chip-on':'chip-off')+'" data-v="'+esc(n)+'" onclick="pickConta(this)">'+esc(n)+'</span>';
-    }).join('');
+    }).join('')
+    + '<span class="chip chip-off" style="border-style:dashed;border-color:var(--mint);color:var(--mint)" onclick="addContaQuick()">＋ Nova</span>';
   }
   function pickConta(el){
     document.getElementById('contaChips').querySelectorAll('.chip').forEach(function(c){c.className='chip chip-off';});
     el.className='chip chip-on'; document.getElementById('f_conta').value=el.dataset.v;
+  }
+  function addContaQuick(){
+    var nome=prompt('Nome da nova conta:'); if(nome===null) return; nome=nome.trim(); if(!nome) return;
+    var existe=state.contas.filter(function(n){return n.toLowerCase()===nome.toLowerCase();})[0];
+    if(existe){ buildContaChips(existe); toast('Conta já existe'); return; }
+    state.contas.unshift(nome); saveContas(); buildContaChips(nome); toast('Conta adicionada ✓');
   }
   function openForm(){
     state.formAlvo = (state.screen==='plano' && (state.planoTab||'orcamento')==='planejado') ? 'planejado' : 'lancamento';
