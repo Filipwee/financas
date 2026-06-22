@@ -378,19 +378,17 @@
     </div>
     <div class="micbtn" id="micBtn" onclick="ouvirVoz()"><div class="mi">🎤</div><div>Ditar: <span style="color:var(--txt)">"gastei 30 no mercado"</span></div></div>
     <div class="valbig">
-      <div class="cap">Valor (R$)</div>
-      <input type="number" id="f_valor" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required oninput="parcInfo()">
+      <div class="cap">Valor</div>
+      <input type="number" id="f_valor" inputmode="decimal" step="0.01" min="0" placeholder="R$ 0,00" required oninput="parcInfo()">
     </div>
-    <div style="display:flex;gap:10px">
-      <div class="field" style="flex:0 0 132px;min-width:0"><label>Data</label><input type="date" id="f_data" required style="padding:12px 8px"></div>
-      <div class="field" style="flex:1;min-width:0"><label>O que foi</label><input type="text" id="f_item" placeholder="mercado, uber…"></div>
-    </div>
-    <div class="field"><label>Categoria</label><div class="chips scroll" id="catChips"></div></div>
+    <div class="field"><label>O que foi</label><input type="text" id="f_item" placeholder="Ex: Mercado Extra"></div>
+    <div class="field"><label>Categoria</label><div class="chips" id="catChips"></div></div>
     <div class="field"><label>Conta</label>
-      <div class="chips scroll" id="contaChips" style="margin-bottom:8px"></div>
+      <div class="chips" id="contaChips" style="margin-bottom:8px"></div>
       <input type="text" id="f_conta" list="contas" placeholder="ou digite a conta…">
       <datalist id="contas"><option>Dinheiro</option><option>Pix</option><option>Conta corrente</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Poupança</option></datalist>
     </div>
+    <div class="field"><label>Data</label><input type="date" id="f_data" required></div>
     <div class="field" id="parcRow"><label>Parcelar em (vezes)</label>
       <input type="number" id="f_parc" inputmode="numeric" step="1" min="1" max="48" value="1" oninput="parcInfo()">
       <div class="help" id="parcHelp"></div>
