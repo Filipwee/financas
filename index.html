@@ -1110,8 +1110,8 @@
     var n=parseInt(document.getElementById('f_parc').value,10)||1;
     var v=parseFloat(document.getElementById('f_valor').value)||0;
     var h=document.getElementById('parcHelp');
-    if(n>1 && v>0) h.textContent='= '+n+'x de '+brl(v/n)+' (total '+brl(v)+'), uma por mês';
-    else if(n>1) h.textContent='Cria '+n+' parcelas, uma por mês';
+    if(n>1 && v>0) h.textContent='= '+n+'x de '+brl(v/n)+' (total '+brl(v)+') → vão para o Planejado, uma por mês';
+    else if(n>1) h.textContent='Cria '+n+' parcelas no Planejado, uma por mês';
     else h.textContent='';
   }
   function buildCatChips(sel){
@@ -1228,11 +1228,15 @@
       closeForm(); render(); toast(msg); btn.disabled=false; btn.textContent=btxt;
     };
     var parc = parseInt(document.getElementById('f_parc').value,10)||1;
+    // gasto parcelado -> entra como PLANEJADOS pendentes (uma parcela por mês)
     if(!id && obj.tipo==='gasto' && parc>1){
       var arr=parcelas(obj, parc);
-      call('addLancamentosBulk', arr).then(function(saved){
-        (saved||arr).forEach(function(l){ if(!l.ano){var pp=l.data.split('-');l.mes=+pp[1];l.ano=+pp[0];} state.lancs.push(l); });
-        fim(arr[0], parc+' parcelas criadas ✓');
+      Promise.all(arr.map(function(p){ return call('addPlanejado', p); })).then(function(saved){
+        (saved||[]).forEach(function(pj){ if(pj) state.planejados.push(pj); });
+        var pp=arr[0].data.split('-'); state.mesSel=parseInt(pp[1],10); state.anoSel=parseInt(pp[0],10);
+        state.screen='plano'; state.planoTab='planejado';
+        closeForm(); render(); toast(parc+' parcelas no Planejado ✓ — pague cada uma quando chegar');
+        btn.disabled=false; btn.textContent=btxt;
       }).catch(erro);
       return false;
     }
