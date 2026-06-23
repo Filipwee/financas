@@ -260,6 +260,34 @@
     margin-bottom:9px;text-align:left}
   .mrow .me{font-size:20px}
 
+  /* cards de cadastro de gastos fixos */
+  .fxcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:11px}
+  .fxhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .fxnum{display:inline-flex;width:22px;height:22px;border-radius:7px;background:rgba(52,224,161,.16);
+    color:var(--mint);font-size:11px;font-weight:700;align-items:center;justify-content:center}
+  .fxlbl{font-size:12px;color:var(--dim);font-weight:600}
+  .fxbody{display:flex;flex-direction:column;gap:10px}
+  .fxf label{display:block;font-size:10px;color:var(--muted);font-weight:700;margin-bottom:5px;letter-spacing:.02em;font-family:var(--f-lbl)}
+  .fxf input,.fxf select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:11px;
+    padding:11px 12px;font-size:14px;color:var(--txt);outline:none;font-family:var(--f-body)}
+  .fxf input:focus,.fxf select:focus{border-color:var(--mint)}
+  .fxrow{display:flex;gap:10px}
+  .fxseg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+  .fxseg button{flex:1;text-align:center;padding:8px;border-radius:8px;border:none;background:transparent;
+    color:var(--muted);font-weight:600;font-size:12px;cursor:pointer;font-family:var(--f-body)}
+  .fxseg button.on.out{background:rgba(251,113,133,.16);color:var(--red);font-weight:700}
+  .fxseg button.on.in{background:rgba(52,224,161,.16);color:var(--mint);font-weight:700}
+  .fxdel{width:28px;height:28px;border-radius:8px;background:rgba(251,113,133,.12);display:flex;
+    align-items:center;justify-content:center;font-size:13px;color:var(--red);border:none;cursor:pointer}
+  .tgl{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+  .tgl input{display:none}
+  .tgl .tt{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase}
+  .tgl .tg{width:34px;height:20px;border-radius:99px;background:#2a3550;position:relative;transition:.15s;flex:none}
+  .tgl .tg:after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted2);transition:.15s}
+  .tgl input:checked ~ .tt{color:var(--mint)}
+  .tgl input:checked ~ .tg{background:var(--mint)}
+  .tgl input:checked ~ .tg:after{left:16px;background:var(--mint-deep)}
+
   /* toast */
   .toast{position:fixed;bottom:calc(86px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
     background:#0c1322;border:1px solid var(--line);color:var(--txt);padding:11px 16px;border-radius:12px;
@@ -1366,35 +1394,60 @@
   function openRecs(){
     var box=document.getElementById('recList'); box.innerHTML='';
     state.recs.forEach(function(r){ box.appendChild(recRowEl(r)); });
-    if(!state.recs.length) addRecRow();
+    if(!state.recs.length) box.appendChild(recRowEl({dia:1}));
+    renumFx();
     document.getElementById('ovRec').classList.add('show');
   }
   function recRowEl(r){
     r=r||{};
-    var d=document.createElement('div'); d.className='recrow';
+    var ehGasto = r.tipo!=='receita';
+    var d=document.createElement('div'); d.className='fxcard';
     d.dataset.id = r.id||''; d.dataset.inicio = r.inicio||''; d.dataset.gerado = r.gerado_ate||'';
     d.innerHTML=''
-      +'<div class="l1">'
-      +  '<input class="rdesc" placeholder="Descrição (ex: Aluguel)" value="'+esc(r.descricao||'')+'">'
-      +  '<input class="rval" type="number" min="0" step="0.01" placeholder="Valor" value="'+(r.valor||'')+'">'
-      +  '<input class="rdia" type="number" min="1" max="28" placeholder="Dia" value="'+(r.dia||1)+'">'
+      +'<div class="fxhead">'
+      +  '<div style="display:flex;align-items:center;gap:8px"><span class="fxnum">1</span><span class="fxlbl">Item recorrente</span></div>'
+      +  '<div style="display:flex;align-items:center;gap:10px">'
+      +    '<label class="tgl"><input type="checkbox" class="rativo"'+(r.ativo===false?'':' checked')+'><span class="tt">ativo</span><span class="tg"></span></label>'
+      +    '<button type="button" class="fxdel" title="Remover" onclick="this.closest(\'.fxcard\').remove();renumFx()">🗑</button>'
+      +  '</div>'
       +'</div>'
-      +'<div class="l2">'
-      +  '<select class="rcat">'+catOptions(r.categoria)+'</select>'
-      +  '<input class="rconta" placeholder="Conta" value="'+esc(r.conta||'')+'">'
-      +  '<select class="rtipo"><option value="gasto"'+(r.tipo!=='receita'?' selected':'')+'>Gasto</option>'
-      +     '<option value="receita"'+(r.tipo==='receita'?' selected':'')+'>Receita</option></select>'
-      +  '<label class="sw"><input type="checkbox" class="rativo"'+(r.ativo===false?'':' checked')+'>on</label>'
-      +  '<button class="rm" title="Remover" onclick="this.closest(\'.recrow\').remove()">🗑</button>'
+      +'<div class="fxbody">'
+      +  '<div class="fxf"><label>NOME</label><input class="rdesc" placeholder="Ex: Aluguel" value="'+esc(r.descricao||'')+'"></div>'
+      +  '<div class="fxrow">'
+      +    '<div class="fxf" style="flex:1.4"><label>VALOR</label><input class="rval" type="number" inputmode="decimal" min="0" step="0.01" placeholder="R$ 0,00" value="'+(r.valor||'')+'"></div>'
+      +    '<div class="fxf" style="flex:1"><label>DIA</label><input class="rdia" type="number" inputmode="numeric" min="1" max="28" placeholder="1" value="'+(r.dia||1)+'"></div>'
+      +  '</div>'
+      +  '<div class="fxrow">'
+      +    '<div class="fxf" style="flex:1"><label>CATEGORIA</label><select class="rcat">'+catOptions(r.categoria)+'</select></div>'
+      +    '<div class="fxf" style="flex:1"><label>CONTA</label><select class="rconta">'+contaOptionsFx(r.conta)+'</select></div>'
+      +  '</div>'
+      +  '<div class="fxf"><label>TIPO</label>'
+      +    '<input type="hidden" class="rtipo" value="'+(ehGasto?'gasto':'receita')+'">'
+      +    '<div class="fxseg">'
+      +      '<button type="button" class="'+(ehGasto?'on out':'')+'" onclick="fxTipo(this,\'gasto\')">Gasto</button>'
+      +      '<button type="button" class="'+(ehGasto?'':'on in')+'" onclick="fxTipo(this,\'receita\')">Receita</button>'
+      +    '</div>'
+      +  '</div>'
       +'</div>';
     return d;
   }
   function catOptions(sel){ return state.cats.map(function(c){return '<option'+(c.nome===sel?' selected':'')+'>'+esc(c.nome)+'</option>';}).join(''); }
-  function addRecRow(){ document.getElementById('recList').appendChild(recRowEl({dia:1})); }
+  function contaOptionsFx(sel){
+    var arr=state.contas.slice(); if(sel && arr.indexOf(sel)<0) arr.unshift(sel);
+    return arr.map(function(n){return '<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>';}).join('');
+  }
+  function fxTipo(btn, tipo){
+    var card=btn.closest('.fxcard'); card.querySelector('.rtipo').value=tipo;
+    var seg=btn.parentNode;
+    seg.children[0].className = tipo==='gasto'?'on out':'';
+    seg.children[1].className = tipo==='receita'?'on in':'';
+  }
+  function renumFx(){ document.querySelectorAll('#recList .fxcard .fxnum').forEach(function(el,i){ el.textContent=i+1; }); }
+  function addRecRow(){ document.getElementById('recList').appendChild(recRowEl({dia:1})); renumFx(); }
   function closeRecs(){ document.getElementById('ovRec').classList.remove('show'); }
   document.getElementById('ovRec').addEventListener('click',function(e){if(e.target===this)closeRecs();});
   function salvarRecs(){
-    var rows=document.querySelectorAll('#recList .recrow'); var novas=[];
+    var rows=document.querySelectorAll('#recList .fxcard'); var novas=[];
     var nowDef = hoje.getFullYear()+'-'+pad(hoje.getMonth()+1)+'-01';
     rows.forEach(function(r,i){
       var desc=r.querySelector('.rdesc').value.trim();
