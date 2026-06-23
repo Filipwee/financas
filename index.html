@@ -376,6 +376,7 @@
   <div class="h-row">
     <button class="ico" onclick="prevMes()">‹</button>
     <div class="h-mid" id="hMes">Carregando…</div>
+    <button class="ico" id="hEye" onclick="togglePriv()" title="Mostrar/ocultar valores">🙈</button>
     <button class="ico" id="hRight" onclick="nextMes()">›</button>
   </div>
 </header>
@@ -538,7 +539,7 @@
     'Transporte':'🚗','Saúde':'💊','Lazer':'🎉','Casa':'🏠'};
   var hoje = new Date();
   var state = { cats:[], lancs:[], recs:[], planos:{}, planejados:[], contas:[], mesSel:hoje.getMonth()+1, anoSel:hoje.getFullYear(),
-    busca:'', filtroCat:'', formTipo:'gasto', aba:'lancado', formAlvo:'lancamento', screen:'inicio' };
+    busca:'', filtroCat:'', formTipo:'gasto', aba:'lancado', formAlvo:'lancamento', screen:'inicio', priv:true };
   var LS_CONTAS = 'mf_contas';
   function contasPadrao(){ return ['Pix','Dinheiro','Cartão','Conta corrente']; }
   function loadContas(){
@@ -717,12 +718,13 @@
   }
   function emoCat(nome){ var c=catObj(nome); return (c&&c.emoji) || EMOJIS[nome] || '🏷️'; }
   function hash(s){var h=0;for(var i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0;}return h;}
-  function brl(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function brl(v){ if(state.priv) return 'R$ ••••'; return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
   function brlBig(v){
+    if(state.priv) return 'R$ •••<span class="c">••</span>';
     var neg=v<0; var s=Math.abs(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
     var p=s.split(','); return (neg?'-':'')+'R$ '+p[0]+'<span class="c">,'+p[1]+'</span>';
   }
-  function compact(v){return Math.round(v||0).toLocaleString('pt-BR');}
+  function compact(v){ if(state.priv) return '••••'; return Math.round(v||0).toLocaleString('pt-BR');}
   function diaMes(iso){var p=iso.split('-');return p[2]+'/'+p[1];}
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function lancsDoMes(ano, mes){ return state.lancs.filter(function(l){return l.mes===mes && l.ano===ano;}); }
@@ -818,7 +820,9 @@
     else if(state.screen==='graficos'){ hr.innerHTML='⋯'; hr.style.color=''; hr.onclick=openMenu; }
     else { hr.innerHTML='›'; hr.style.color=''; hr.onclick=nextMes; }
     document.getElementById('fab').onclick = openForm;
+    var eye=document.getElementById('hEye'); if(eye){ eye.textContent=state.priv?'🙈':'👁'; eye.style.color=state.priv?'':'var(--mint)'; }
   }
+  function togglePriv(){ state.priv=!state.priv; render(); }
   function setPlanoTab(t){ state.planoTab=t; render(); }
 
   // ----- INÍCIO (dashboard) -----
@@ -1538,53 +1542,145 @@
     var gastos=doMes.filter(function(l){return l.tipo!=='receita';});
     var totalGasto=gastos.reduce(function(s,l){return s+l.valor;},0);
     var totalReceita=doMes.filter(function(l){return l.tipo==='receita';}).reduce(function(s,l){return s+l.valor;},0);
+    var saldo=totalReceita-totalGasto;
     var meta=metaMes(state.anoSel,state.mesSel);
     var porCat={}; gastos.forEach(function(l){porCat[l.categoria]=(porCat[l.categoria]||0)+l.valor;});
     var titulo=MESES_L[state.mesSel-1]+' '+state.anoSel;
-    var planRows=state.cats.map(function(c){return {nome:c.nome, plan:meta.vals[c.nome]||0, real:porCat[c.nome]||0};})
-      .filter(function(c){return c.plan>0||c.real>0;}).sort(function(a,b){return b.real-a.real;});
-    var planHtml=planRows.map(function(c){
-      var sobra=c.plan-c.real; var cor=sobra<0?'#b91c1c':'#15803d';
-      return '<tr><td>'+esc(c.nome)+'</td><td class="r">'+brl(c.plan)+'</td><td class="r">'+brl(c.real)
-        +'</td><td class="r" style="color:'+cor+'">'+brl(sobra)+'</td></tr>';
-    }).join('');
-    var lista='';
-    var grupos={}; doMes.forEach(function(l){(grupos[l.data]=grupos[l.data]||[]).push(l);});
-    Object.keys(grupos).sort(function(a,b){return a<b?1:-1;}).forEach(function(dia){
-      grupos[dia].forEach(function(l){
-        var ehR=l.tipo==='receita';
-        lista+='<tr><td>'+diaMes(l.data)+'</td><td>'+esc(l.item||l.categoria)+'</td><td>'+esc(l.categoria)
-          +'</td><td>'+esc(l.conta||'')+'</td><td class="r" style="color:'+(ehR?'#15803d':'#b91c1c')+'">'
-          +(ehR?'+':'−')+brl(l.valor)+'</td></tr>';
-      });
+    var mesCurto=MESES_L[state.mesSel-1].slice(0,3);
+    var dataGer=pad(hoje.getDate())+'/'+pad(hoje.getMonth()+1)+'/'+hoje.getFullYear();
+
+    function n2(v){return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+    function n1(v){return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});}
+    function r0(v){return Math.round(v||0).toLocaleString('pt-BR');}
+    function sgn(v){return v<0?'−':(v>0?'+':'');}
+
+    var planRows=state.cats.map(function(c){
+      var plan=meta.vals[c.nome]||0, real=porCat[c.nome]||0;
+      return {nome:c.nome, plan:plan, real:real, sobra:plan-real};
+    }).filter(function(c){return c.plan>0||c.real>0;}).sort(function(a,b){return b.real-a.real;});
+    var totPlan=planRows.reduce(function(s,c){return s+c.plan;},0);
+    var totReal=planRows.reduce(function(s,c){return s+c.real;},0);
+
+    var txs=doMes.slice().sort(function(a,b){return a.data<b.data?1:(a.data>b.data?-1:0);}).map(function(l){
+      var ehR=l.tipo==='receita';
+      return { d:diaMes(l.data), item:esc(l.item||l.categoria), cat:esc(l.categoria), conta:esc(l.conta||''),
+        meta:esc(l.categoria)+(l.conta?' · '+esc(l.conta):''), val:(ehR?'+':'−')+'R$ '+n2(l.valor) };
     });
-    var css='body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111;margin:28px;}'
-      +'h1{font-size:20px;margin:0 0 2px} .sub{color:#666;font-size:12px;margin-bottom:18px}'
-      +'.cards{display:flex;gap:10px;margin-bottom:18px}'
-      +'.c{flex:1;border:1px solid #ddd;border-radius:10px;padding:10px}'
-      +'.c .l{font-size:11px;color:#666} .c .v{font-size:18px;font-weight:700}'
-      +'h2{font-size:13px;text-transform:uppercase;color:#666;letter-spacing:.5px;margin:18px 0 6px}'
-      +'table{width:100%;border-collapse:collapse;font-size:12px}'
-      +'th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #eee}'
-      +'th{color:#666;font-size:11px;text-transform:uppercase}'
-      +'.r{text-align:right;font-variant-numeric:tabular-nums}'
-      +'@media print{.noprint{display:none}}';
-    var html='<!doctype html><html><head><meta charset="utf-8"><title>Finanças — '+titulo+'</title>'
-      +'<style>'+css+'</style></head><body>'
-      +'<h1>Minhas Finanças</h1><div class="sub">'+titulo+' • gerado em '+pad(hoje.getDate())+'/'+pad(hoje.getMonth()+1)+'/'+hoje.getFullYear()+'</div>'
-      +'<div class="cards">'
-      +'<div class="c"><div class="l">Entradas</div><div class="v" style="color:#15803d">'+brl(totalReceita)+'</div></div>'
-      +'<div class="c"><div class="l">Saídas</div><div class="v" style="color:#b91c1c">'+brl(totalGasto)+'</div></div>'
-      +'<div class="c"><div class="l">Saldo</div><div class="v">'+brl(totalReceita-totalGasto)+'</div></div>'
+    var nTx=txs.length;
+    var pctTxt=totalReceita>0?(n1(saldo/totalReceita*100)+'% das entradas'):'do mês';
+
+    // ---------- A · Fintech ----------
+    var finBud=planRows.map(function(c){
+      var over=c.real>c.plan;
+      var pct=c.plan>0?Math.min(100,Math.round(c.real/c.plan*100)):(c.real>0?100:0);
+      var barW=over?100:pct, barColor=over?'#d23f3f':'#4b44c9';
+      var sCol=c.sobra<0?'#d23f3f':(c.sobra>0?'#1f9d63':'#b4b2be');
+      return '<div style="padding:11px 0;border-top:1px solid #ecebf2;">'
+        +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;"><span style="font-size:13.5px;font-weight:700;color:#191824;">'+esc(c.nome)+'</span><span style="font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;color:'+sCol+';">'+sgn(c.sobra)+'R$ '+n2(Math.abs(c.sobra))+'</span></div>'
+        +'<div style="display:flex;align-items:center;gap:12px;"><div style="flex:1;height:7px;border-radius:4px;overflow:hidden;background:#ecebf7;"><div style="width:'+barW+'%;height:100%;background:'+barColor+';'+(c.sobra===0?'opacity:.55;':'')+'"></div></div><span style="font-size:11px;font-weight:600;color:#9a98a6;white-space:nowrap;font-variant-numeric:tabular-nums;">R$ '+r0(c.real)+' / '+r0(c.plan)+'</span></div>'
+        +'</div>';
+    }).join('');
+    var finTx=txs.map(function(t){
+      return '<div style="display:grid;grid-template-columns:46px 1fr auto;column-gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid #f3f2f7;">'
+        +'<span style="font-family:\'Space Mono\',monospace;font-size:11px;color:#b4b2be;letter-spacing:-.03em;">'+t.d+'</span>'
+        +'<div style="min-width:0;"><div style="font-size:13.5px;font-weight:600;color:#272633;line-height:1.3;">'+t.item+'</div><div style="font-size:11px;font-weight:500;color:#a8a6b2;margin-top:1px;">'+t.meta+'</div></div>'
+        +'<span style="font-size:13.5px;font-weight:700;color:#272633;font-variant-numeric:tabular-nums;white-space:nowrap;">'+t.val+'</span></div>';
+    }).join('');
+    var pgFin='<div style="background:#fff;border-radius:2px;box-shadow:0 2px 14px rgba(20,18,40,.10);padding:48px 44px 40px;width:760px;font-family:Manrope,sans-serif;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #ecebf2;padding-bottom:20px;">'
+      +'<div><div style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#4b44c9;">Relatório mensal</div><div style="font-size:28px;font-weight:800;letter-spacing:-.02em;color:#191824;margin-top:6px;">Minhas Finanças</div></div>'
+      +'<div style="text-align:right;font-size:12px;font-weight:600;color:#9a98a6;line-height:1.5;">'+titulo+'<br><span style="font-weight:500;color:#b4b2be;">gerado em '+dataGer+'</span></div></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:11px;margin-top:22px;">'
+      +'<div style="background:#f7f7fb;border-radius:12px;padding:16px 16px 14px;"><div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9a98a6;">Entradas</div><div style="font-size:21px;font-weight:800;color:#1f9d63;letter-spacing:-.02em;margin-top:9px;font-variant-numeric:tabular-nums;">R$ '+n2(totalReceita)+'</div></div>'
+      +'<div style="background:#f7f7fb;border-radius:12px;padding:16px 16px 14px;"><div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9a98a6;">Saídas</div><div style="font-size:21px;font-weight:800;color:#d23f3f;letter-spacing:-.02em;margin-top:9px;font-variant-numeric:tabular-nums;">R$ '+n2(totalGasto)+'</div></div>'
+      +'<div style="border-radius:12px;padding:16px 18px 14px;background:#4b44c9;"><div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c3bff4;">Saldo do mês</div><div style="font-size:23px;font-weight:800;letter-spacing:-.02em;margin-top:7px;font-variant-numeric:tabular-nums;color:#fff;">R$ '+n2(saldo)+'</div><div style="font-size:11px;font-weight:600;margin-top:3px;color:#c3bff4;">'+pctTxt+'</div></div></div>'
+      +(planRows.length?'<div style="margin-top:30px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><div style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#191824;">Orçamento</div><div style="font-size:11px;font-weight:600;color:#9a98a6;">planejado × real</div></div>'+finBud+'</div>':'')
+      +'<div style="margin-top:30px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;"><div style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#191824;">Lançamentos</div><div style="font-size:11px;font-weight:600;color:#9a98a6;">'+nTx+' registros</div></div>'+finTx+'</div>'
+      +'</div>';
+
+    // ---------- B · Editorial ----------
+    var ediBud=planRows.map(function(c){
+      var sCol=c.sobra<0?'#b0442f':(c.sobra>0?'#3c6b4a':'#b0aa98');
+      return '<tr><td style="font-family:Newsreader,serif;font-size:15px;padding:9px 0;color:#23271f;border-bottom:1px solid #e2ddd0;">'+esc(c.nome)+'</td>'
+        +'<td style="text-align:right;font-family:Archivo;font-size:13px;padding:9px 0;color:#b0aa98;border-bottom:1px solid #e2ddd0;font-variant-numeric:tabular-nums;">R$ '+n2(c.plan)+'</td>'
+        +'<td style="text-align:right;font-family:Archivo;font-size:13px;padding:9px 0;color:#23271f;border-bottom:1px solid #e2ddd0;font-variant-numeric:tabular-nums;">R$ '+n2(c.real)+'</td>'
+        +'<td style="text-align:right;font-family:Archivo;font-size:13px;font-weight:'+(c.sobra===0?'400':'600')+';padding:9px 0;color:'+sCol+';border-bottom:1px solid #e2ddd0;font-variant-numeric:tabular-nums;">'+sgn(c.sobra)+'R$ '+n2(Math.abs(c.sobra))+'</td></tr>';
+    }).join('');
+    var totSobra=totPlan-totReal;
+    var ediTotal=planRows.length?'<tr><td style="font-family:Archivo;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:11px 0 0;color:#23271f;">Total</td>'
+      +'<td style="text-align:right;font-family:Archivo;font-size:13px;font-weight:700;padding:11px 0 0;color:#23271f;font-variant-numeric:tabular-nums;">R$ '+n2(totPlan)+'</td>'
+      +'<td style="text-align:right;font-family:Archivo;font-size:13px;font-weight:700;padding:11px 0 0;color:#23271f;font-variant-numeric:tabular-nums;">R$ '+n2(totReal)+'</td>'
+      +'<td style="text-align:right;font-family:Archivo;font-size:13px;font-weight:700;padding:11px 0 0;color:'+(totSobra<0?'#b0442f':'#3c6b4a')+';font-variant-numeric:tabular-nums;">'+sgn(totSobra)+'R$ '+n2(Math.abs(totSobra))+'</td></tr>':'';
+    var ediTx=txs.map(function(t){
+      return '<div style="display:grid;grid-template-columns:42px 1fr auto;column-gap:16px;align-items:baseline;padding:7px 0;border-bottom:1px solid #e2ddd0;">'
+        +'<span style="font-family:Archivo;font-size:11px;font-variant-numeric:tabular-nums;color:#b0aa98;">'+t.d+'</span>'
+        +'<span style="font-family:Newsreader,serif;font-size:14.5px;line-height:1.35;color:#23271f;">'+t.item+'<span style="font-family:Archivo;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;margin-left:8px;color:#b0aa98;">'+t.cat+'</span></span>'
+        +'<span style="font-family:Archivo;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#23271f;">'+t.val+'</span></div>';
+    }).join('');
+    var pgEdi='<div style="border-radius:2px;box-shadow:0 2px 14px rgba(40,30,18,.12);padding:50px 46px 42px;width:760px;background:#f6f3ea;">'
+      +'<div style="padding-top:13px;display:flex;justify-content:space-between;align-items:flex-start;border-top:2.5px solid #23271f;"><div style="font-family:Archivo,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#a09a88;">Relatório · '+titulo+'</div><div style="font-family:Archivo,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#a09a88;">Gerado em '+dataGer+'</div></div>'
+      +'<div style="font-family:Newsreader,serif;font-size:44px;font-weight:500;font-style:italic;letter-spacing:-.01em;line-height:1.05;margin:13px 0 4px;color:#23271f;">Minhas Finanças</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid #e2ddd0;border-bottom:1px solid #e2ddd0;margin-top:22px;">'
+      +'<div style="padding:17px 0;border-right:1px solid #e2ddd0;"><div style="font-family:Archivo;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a09a88;">Entradas</div><div style="font-family:Newsreader,serif;font-size:26px;font-weight:500;margin-top:8px;font-variant-numeric:tabular-nums;color:#23271f;">R$ '+n2(totalReceita)+'</div></div>'
+      +'<div style="padding:17px 0 17px 22px;border-right:1px solid #e2ddd0;"><div style="font-family:Archivo;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a09a88;">Saídas</div><div style="font-family:Newsreader,serif;font-size:26px;font-weight:500;margin-top:8px;font-variant-numeric:tabular-nums;color:#23271f;">R$ '+n2(totalGasto)+'</div></div>'
+      +'<div style="padding:17px 0 17px 22px;"><div style="font-family:Archivo;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#3c6b4a;">Saldo</div><div style="font-family:Newsreader,serif;font-size:26px;font-weight:600;margin-top:8px;font-variant-numeric:tabular-nums;color:#3c6b4a;">R$ '+n2(saldo)+'</div></div></div>'
+      +(planRows.length?'<div style="font-family:Archivo;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin:30px 0 11px;color:#23271f;">Planejado × Real</div><table style="width:100%;border-collapse:collapse;"><thead><tr>'
+        +'<th style="text-align:left;font-family:Archivo;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:0 0 8px;color:#a09a88;border-bottom:1.5px solid #23271f;">Categoria</th>'
+        +'<th style="text-align:right;font-family:Archivo;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:0 0 8px;color:#a09a88;border-bottom:1.5px solid #23271f;">Planejado</th>'
+        +'<th style="text-align:right;font-family:Archivo;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:0 0 8px;color:#a09a88;border-bottom:1.5px solid #23271f;">Real</th>'
+        +'<th style="text-align:right;font-family:Archivo;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:0 0 8px;color:#a09a88;border-bottom:1.5px solid #23271f;">Sobra</th></tr></thead><tbody>'+ediBud+ediTotal+'</tbody></table>':'')
+      +'<div style="font-family:Archivo;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin:30px 0 8px;color:#23271f;">Lançamentos</div>'+ediTx
+      +'</div>';
+
+    // ---------- C · Minimal ----------
+    var minBud=planRows.map(function(c){
+      var over=c.real>c.plan;
+      var pct=c.plan>0?Math.min(100,Math.round(c.real/c.plan*100)):(c.real>0?100:0);
+      var barW=over?100:pct, barColor=over?'#c2553f':'#4f8a5b';
+      var sCol=c.sobra<0?'#c2553f':(c.sobra>0?'#4f8a5b':'#bcc0b6');
+      return '<div style="display:grid;grid-template-columns:1fr 84px;gap:22px;align-items:center;padding:14px 0;border-top:1px solid #eceae4;">'
+        +'<div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font-family:\'Hanken Grotesk\';font-size:14px;font-weight:500;color:#23271f;">'+esc(c.nome)+'</span><span style="font-family:\'Space Mono\',monospace;font-size:10.5px;color:#bcc0b6;">'+r0(c.real)+' / '+r0(c.plan)+'</span></div><div style="height:2px;position:relative;background:#eceae4;"><div style="position:absolute;inset:0;width:'+barW+'%;background:'+barColor+';'+(c.sobra===0?'opacity:.5;':'')+'"></div></div></div>'
+        +'<span style="text-align:right;font-family:\'Hanken Grotesk\';font-size:13.5px;font-weight:'+(c.sobra===0?'500':'600')+';font-variant-numeric:tabular-nums;color:'+sCol+';">'+sgn(c.sobra)+n2(Math.abs(c.sobra))+'</span></div>';
+    }).join('');
+    var minTx=txs.map(function(t){
+      return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:10px 0;border-bottom:1px solid #f1f0eb;">'
+        +'<div style="display:flex;gap:14px;align-items:baseline;min-width:0;"><span style="font-family:\'Space Mono\',monospace;font-size:11px;white-space:nowrap;color:#bcc0b6;">'+t.d+'</span><span style="font-family:\'Hanken Grotesk\';font-size:14px;font-weight:500;color:#23271f;">'+t.item+'</span><span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;color:#bcc0b6;">'+t.cat+'</span></div>'
+        +'<span style="font-family:\'Hanken Grotesk\';font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;color:#23271f;">'+t.val+'</span></div>';
+    }).join('');
+    var pgMin='<div style="border-radius:2px;box-shadow:0 2px 14px rgba(30,40,30,.10);padding:54px 48px 46px;width:760px;background:#fcfcfb;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;"><div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9aa094;">Minhas Finanças</div><div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#bcc0b6;">'+mesCurto+' '+state.anoSel+' · '+pad(hoje.getDate())+'/'+pad(hoje.getMonth()+1)+'</div></div>'
+      +'<div style="margin-top:44px;"><div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9aa094;">Saldo do mês</div><div style="font-family:\'Hanken Grotesk\',sans-serif;font-size:62px;font-weight:300;letter-spacing:-.03em;line-height:1;margin-top:13px;font-variant-numeric:tabular-nums;color:#23271f;">R$ '+n2(saldo)+'</div>'
+      +'<div style="display:flex;gap:38px;margin-top:24px;"><div><div style="font-family:\'Space Mono\',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#bcc0b6;">Entradas</div><div style="font-family:\'Hanken Grotesk\';font-size:18px;font-weight:500;margin-top:5px;font-variant-numeric:tabular-nums;color:#4f8a5b;">R$ '+n2(totalReceita)+'</div></div>'
+      +'<div style="padding-left:38px;border-left:1px solid #eceae4;"><div style="font-family:\'Space Mono\',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#bcc0b6;">Saídas</div><div style="font-family:\'Hanken Grotesk\';font-size:18px;font-weight:500;margin-top:5px;font-variant-numeric:tabular-nums;color:#23271f;">R$ '+n2(totalGasto)+'</div></div></div></div>'
+      +(planRows.length?'<div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin:44px 0 4px;color:#9aa094;">Planejado × Real</div><div>'+minBud+'</div>':'')
+      +'<div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin:44px 0 4px;color:#9aa094;">Lançamentos</div>'+minTx
+      +'</div>';
+
+    var fonts='<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Hanken+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">';
+    var css='*{box-sizing:border-box}body{margin:0;background:#e7e5df;display:flex;flex-direction:column;align-items:center;padding:40px 24px 64px;}'
+      +'.page{display:none}.page.on{display:block}'
+      +'@media print{.no-print{display:none!important}body{background:#fff;padding:0}.page{box-shadow:none!important}}'
+      +'@page{margin:14mm}';
+    var html='<!doctype html><html><head><meta charset="utf-8"><title>Finanças — '+titulo+'</title>'+fonts+'<style>'+css+'</style></head><body>'
+      +'<div class="no-print" style="width:760px;max-width:100%;margin-bottom:24px;">'
+      +'<div style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#8a8780;">Minhas Finanças — modelo do PDF</div>'
+      +'<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;">'
+      +'<button id="b-fin" onclick="pick(\'fin\')">Fintech · Índigo</button>'
+      +'<button id="b-edi" onclick="pick(\'edi\')">Editorial · Areia</button>'
+      +'<button id="b-min" onclick="pick(\'min\')">Minimal · Verde</button>'
+      +'<button onclick="window.print()" style="margin-left:auto;font-family:\'Hanken Grotesk\',sans-serif;font-size:13px;background:#23221f;color:#fff;border:1px solid #23221f;border-radius:999px;padding:9px 18px;font-weight:700;cursor:pointer;">Imprimir / Salvar PDF</button>'
       +'</div>'
-      +(planHtml?'<h2>Plano (planejado × real)</h2><table><tr><th>Categoria</th><th class="r">Planejado</th><th class="r">Real</th><th class="r">Sobra</th></tr>'+planHtml+'</table>':'')
-      +'<h2>Lançamentos</h2><table><tr><th>Dia</th><th>Item</th><th>Categoria</th><th>Conta</th><th class="r">Valor</th></tr>'+lista+'</table>'
-      +'<p class="noprint" style="margin-top:24px;color:#888;font-size:12px">Use Ctrl/Cmd+P e escolha "Salvar como PDF". <button onclick="window.print()">Imprimir / PDF</button></p>'
+      +'<div style="font-family:\'Hanken Grotesk\',sans-serif;font-size:13px;color:#6f6c66;margin-top:12px;">Escolha um modelo e use <strong>Imprimir → Salvar como PDF</strong> (A4 retrato). Os controles não aparecem no PDF.</div>'
+      +'</div>'
+      +'<div id="pg-fin" class="page on">'+pgFin+'</div>'
+      +'<div id="pg-edi" class="page">'+pgEdi+'</div>'
+      +'<div id="pg-min" class="page">'+pgMin+'</div>'
+      +'<script>var bb="font-family:\'Hanken Grotesk\',sans-serif;font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;cursor:pointer;transition:all .15s;";'
+      +'function pick(s){["fin","edi","min"].forEach(function(k){var pg=document.getElementById("pg-"+k);pg.className="page"+(k===s?" on":"");document.getElementById("b-"+k).style.cssText=bb+(k===s?"background:#23221f;color:#fff;border:1px solid #23221f;":"background:transparent;color:#5c5a54;border:1px solid #cfccc4;");});}pick("fin");<\/script>'
       +'</body></html>';
     var w=window.open('','_blank');
     if(!w){ toast('Permita pop-ups para exportar'); return; }
     w.document.open(); w.document.write(html); w.document.close();
-    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 400);
   }
 
   // ---- planejado (editar/pagar) ----
