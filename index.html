@@ -395,6 +395,13 @@
   <div class="fab" id="fab" onclick="openForm()"><b></b></div>
 </nav>
 
+<!-- Selo flutuante Powered by Clamp -->
+<a href="https://clamp.studio" target="_blank" rel="noopener" id="clampFloat" title="Powered by Clamp"
+   style="position:fixed;right:14px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:15;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:rgba(16,26,46,.82);border:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:9px;padding:6px 10px;box-shadow:0 6px 18px rgba(0,0,0,.3);">
+  <svg width="13" height="13" viewBox="0 0 100 100" fill="none" style="display:block"><path d="M71 20 A37 37 0 1 0 71 80" stroke="#EAF0FA" stroke-width="15" stroke-linecap="round"/><rect x="60" y="41" width="18" height="18" rx="3" fill="#2B54F4"/></svg>
+  <span style="font-family:var(--f-body);font-size:11px;letter-spacing:.03em;color:var(--muted);">by <span style="color:var(--txt);font-weight:700;">Clamp</span></span>
+</a>
+
 <!-- Modal adicionar/editar -->
 <div class="ov" id="ov">
   <form class="sheet" id="form" onsubmit="return salvar(event)">
@@ -528,6 +535,11 @@
     <div class="auth-msg" id="authMsg"></div>
     <button class="auth-btn" id="au_btn" onclick="authSubmit()">Entrar</button>
     <div class="auth-bottom" id="authBottom">Não tem conta? <a id="au_toggle" onclick="authToggle()">Criar agora</a></div>
+    <a href="https://clamp.studio" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;margin-top:26px;opacity:.85;">
+      <span style="font-family:var(--f-body);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);">powered by</span>
+      <svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="display:block"><path d="M71 20 A37 37 0 1 0 71 80" stroke="#EAF0FA" stroke-width="15" stroke-linecap="round"/><rect x="60" y="41" width="18" height="18" rx="3" fill="#2B54F4"/></svg>
+      <span style="font-size:14px;font-weight:700;letter-spacing:-.02em;color:var(--txt);">Clamp</span>
+    </a>
   </div>
 </div>
 
