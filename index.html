@@ -376,7 +376,7 @@
   <div class="h-row">
     <button class="ico" onclick="prevMes()">‹</button>
     <div class="h-mid" id="hMes">Carregando…</div>
-    <button class="ico" id="hEye" onclick="togglePriv()" title="Mostrar/ocultar valores">🙈</button>
+    <button class="ico" id="hEye" onclick="togglePriv()" title="Mostrar/ocultar valores"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M1 1l22 22"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/></svg></button>
     <button class="ico" id="hRight" onclick="nextMes()">›</button>
   </div>
 </header>
@@ -495,6 +495,12 @@
     <button class="mrow" onclick="closeMenu();openContasEditor()"><span class="me">💳</span> Minhas contas</button>
     <button class="mrow" onclick="closeMenu();exportarPDF()"><span class="me">📄</span> Exportar PDF do mês</button>
     <button class="mrow" id="menuSair" onclick="closeMenu();sair()" style="display:none"><span class="me">🚪</span> Sair da conta</button>
+    <!-- Powered by Clamp -->
+    <a href="https://clamp.studio" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
+      <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);">powered by</span>
+      <svg width="15" height="15" viewBox="0 0 100 100" fill="none" style="display:block"><path d="M71 20 A37 37 0 1 0 71 80" stroke="#EAF0FA" stroke-width="15" stroke-linecap="round"/><rect x="60" y="41" width="18" height="18" rx="3" fill="#2B54F4"/></svg>
+      <span style="font-size:15px;font-weight:700;letter-spacing:-.02em;color:var(--txt);">Clamp</span>
+    </a>
   </div>
 </div>
 
@@ -516,7 +522,7 @@
       <div class="auth-input"><span class="ai">✉</span><input type="email" id="au_email" autocomplete="email" inputmode="email" placeholder="voce@email.com"></div>
     </div>
     <div class="auth-field"><div class="al">SENHA</div>
-      <div class="auth-input"><span class="ai">🔒</span><input type="password" id="au_pass" autocomplete="current-password" placeholder="••••••••"><span class="eye" onclick="toggleEye()">👁</span></div>
+      <div class="auth-input"><span class="ai">🔒</span><input type="password" id="au_pass" autocomplete="current-password" placeholder="••••••••"><span class="eye" id="au_eye" onclick="toggleEye()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
     </div>
     <div class="auth-forgot"><a onclick="authReset()">Esqueci a senha</a></div>
     <div class="auth-msg" id="authMsg"></div>
@@ -820,9 +826,11 @@
     else if(state.screen==='graficos'){ hr.innerHTML='⋯'; hr.style.color=''; hr.onclick=openMenu; }
     else { hr.innerHTML='›'; hr.style.color=''; hr.onclick=nextMes; }
     document.getElementById('fab').onclick = openForm;
-    var eye=document.getElementById('hEye'); if(eye){ eye.textContent=state.priv?'🙈':'👁'; eye.style.color=state.priv?'':'var(--mint)'; }
+    var eye=document.getElementById('hEye'); if(eye){ eye.innerHTML=state.priv?ICON_EYEOFF:ICON_EYE; eye.style.color=state.priv?'':'var(--mint)'; }
   }
   function togglePriv(){ state.priv=!state.priv; render(); }
+  var ICON_EYE='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var ICON_EYEOFF='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M1 1l22 22"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/></svg>';
   function setPlanoTab(t){ state.planoTab=t; render(); }
 
   // ----- INÍCIO (dashboard) -----
@@ -1596,6 +1604,7 @@
       +'<div style="border-radius:12px;padding:16px 18px 14px;background:#4b44c9;"><div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c3bff4;">Saldo do mês</div><div style="font-size:23px;font-weight:800;letter-spacing:-.02em;margin-top:7px;font-variant-numeric:tabular-nums;color:#fff;">R$ '+n2(saldo)+'</div><div style="font-size:11px;font-weight:600;margin-top:3px;color:#c3bff4;">'+pctTxt+'</div></div></div>'
       +(planRows.length?'<div style="margin-top:30px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><div style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#191824;">Orçamento</div><div style="font-size:11px;font-weight:600;color:#9a98a6;">planejado × real</div></div>'+finBud+'</div>':'')
       +'<div style="margin-top:30px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;"><div style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#191824;">Lançamentos</div><div style="font-size:11px;font-weight:600;color:#9a98a6;">'+nTx+' registros</div></div>'+finTx+'</div>'
+      +'<a href="https://clamp.studio" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;margin-top:30px;padding-top:18px;border-top:1px solid #ecebf2;"><span style="font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9a98a6;">powered by</span><svg width="14" height="14" viewBox="0 0 100 100" fill="none"><path d="M71 20 A37 37 0 1 0 71 80" stroke="#191824" stroke-width="15" stroke-linecap="round"/><rect x="60" y="41" width="18" height="18" rx="3" fill="#2B54F4"/></svg><span style="font-size:14px;font-weight:800;letter-spacing:-.02em;color:#191824;">Clamp</span></a>'
       +'</div>';
 
     // ---------- B · Editorial ----------
@@ -1630,6 +1639,7 @@
         +'<th style="text-align:right;font-family:Archivo;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:0 0 8px;color:#a09a88;border-bottom:1.5px solid #23271f;">Real</th>'
         +'<th style="text-align:right;font-family:Archivo;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:0 0 8px;color:#a09a88;border-bottom:1.5px solid #23271f;">Sobra</th></tr></thead><tbody>'+ediBud+ediTotal+'</tbody></table>':'')
       +'<div style="font-family:Archivo;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin:30px 0 8px;color:#23271f;">Lançamentos</div>'+ediTx
+      +'<a href="https://clamp.studio" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;margin-top:34px;padding-top:16px;border-top:1px solid #e2ddd0;"><span style="font-family:Archivo,sans-serif;font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#a09a88;">powered by</span><svg width="14" height="14" viewBox="0 0 100 100" fill="none"><path d="M71 20 A37 37 0 1 0 71 80" stroke="#23271f" stroke-width="15" stroke-linecap="round"/><rect x="60" y="41" width="18" height="18" rx="3" fill="#2B54F4"/></svg><span style="font-family:Newsreader,serif;font-size:16px;font-weight:600;color:#23271f;">Clamp</span></a>'
       +'</div>';
 
     // ---------- C · Minimal ----------
@@ -1654,13 +1664,17 @@
       +'<div style="padding-left:38px;border-left:1px solid #eceae4;"><div style="font-family:\'Space Mono\',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#bcc0b6;">Saídas</div><div style="font-family:\'Hanken Grotesk\';font-size:18px;font-weight:500;margin-top:5px;font-variant-numeric:tabular-nums;color:#23271f;">R$ '+n2(totalGasto)+'</div></div></div></div>'
       +(planRows.length?'<div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin:44px 0 4px;color:#9aa094;">Planejado × Real</div><div>'+minBud+'</div>':'')
       +'<div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin:44px 0 4px;color:#9aa094;">Lançamentos</div>'+minTx
+      +'<a href="https://clamp.studio" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;margin-top:44px;padding-top:18px;border-top:1px solid #eceae4;"><span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9aa094;">powered by</span><svg width="14" height="14" viewBox="0 0 100 100" fill="none"><path d="M71 20 A37 37 0 1 0 71 80" stroke="#23271f" stroke-width="15" stroke-linecap="round"/><rect x="60" y="41" width="18" height="18" rx="3" fill="#2B54F4"/></svg><span style="font-family:\'Hanken Grotesk\',sans-serif;font-size:14px;font-weight:600;color:#23271f;">Clamp</span></a>'
       +'</div>';
 
     var fonts='<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Hanken+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">';
     var css='*{box-sizing:border-box}body{margin:0;background:#e7e5df;display:flex;flex-direction:column;align-items:center;padding:40px 24px 64px;}'
       +'.page{display:none}.page.on{display:block}'
-      +'@media print{.no-print{display:none!important}body{background:#fff;padding:0}.page{box-shadow:none!important}}'
-      +'@page{margin:14mm}';
+      +'@media print{.no-print{display:none!important}'
+      +'html,body{background:#fff!important;margin:0;padding:0;display:block;width:100%}'
+      +'.page{display:none!important;box-shadow:none!important}.page.on{display:block!important}'
+      +'.page>div{width:100%!important;max-width:100%!important;box-shadow:none!important;border-radius:0!important}}'
+      +'@page{size:A4 portrait;margin:12mm}';
     var html='<!doctype html><html><head><meta charset="utf-8"><title>Finanças — '+titulo+'</title>'+fonts+'<style>'+css+'</style></head><body>'
       +'<div class="no-print" style="width:760px;max-width:100%;margin-bottom:24px;">'
       +'<div style="font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#8a8780;">Minhas Finanças — modelo do PDF</div>'
@@ -1808,6 +1822,7 @@
   var appStarted=false, authMode='entrar';
   function toggleEye(){
     var i=document.getElementById('au_pass'); i.type = i.type==='password'?'text':'password';
+    var e=document.getElementById('au_eye'); if(e){ e.innerHTML=(i.type==='text'?ICON_EYEOFF:ICON_EYE).replace(/width="20" height="20"/,'width="18" height="18"'); }
   }
   function authMsg(m, ok){
     var el=document.getElementById('authMsg'); el.textContent=m||'';
